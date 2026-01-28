@@ -38,11 +38,11 @@ class Cache(ABC):
         pass
     
     @abstractmethod
-    def set_row_data(self, dataset: int, sheet: int, row: int, data: list[str]): # Add list[row_obj] later
+    def set_row(self, dataset: int, sheet: int, row: int, data: list[str]): # Add list[row_obj] later
         pass
         
     @abstractmethod
-    def get_row_data(self, dataset: int, sheet: int, row: int) -> list[str]: # Add list[row_obj] later
+    def get_row(self, dataset: int, sheet: int, row: int) -> list[str]: # Add list[row_obj] later
         pass
     
     @abstractmethod
