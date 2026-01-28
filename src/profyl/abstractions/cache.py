@@ -3,38 +3,27 @@ from abc import ABC, abstractmethod
 from data_source import DataSource
 
 class Cache(ABC):
-    def populate_from(self, data_source: DataSource, dataset: int, row_sample_num: int):
+    def populate_from(self, data_source: DataSource, dataset: int):
         for sheet in range(data_source.get_sheet_count()):
-            sample_rows: list[list[str]] = []
-            row_num = data_source.get_row_count(sheet)
-            if row_num <= 25:
-                for row in range(row_num):
-                    sample_rows.append(data_source.read_row(sheet, row))
-            else:
-                sample_indices = [i * row_num // row_sample_num for i in range(row_sample_num)]
-                for row in sample_indices:
-                    sample_rows.append(data_source.read_row(sheet, row))
-                        
-            self.store_sample_rows(dataset, sheet, sample_rows)
-                    
-            for col in range(data_source.get_col_count(sheet)):
-                unique_vals: set[str] = set(data_source.read_col(sheet, col)[1])
-                self.store_unique_vals(dataset, sheet, col, unique_vals)
-        
-    @abstractmethod
-    def store_unique_vals(self, dataset: int, sheet: int, col: int, vals: set[str]):
-        pass
-    
+            self.add_unedited_row_indices(dataset, sheet, set(range(data_source.get_row_count(sheet))))
+            for row in range(data_source.get_row_count(sheet)):
+                row_data = data_source.read_row(sheet, row)
+                self.set_row(dataset, sheet, row, row_data)
+                
     @abstractmethod
     def get_unique_vals(self, dataset: int, sheet: int, col: int) -> set[str]:
         pass
     
     @abstractmethod
-    def store_sample_rows(self, dataset: int, sheet: int, rows: list[list[str]]): # Add list[row_obj] later
+    def add_unedited_row_indices(self, dataset: int, sheet: int, indices: set[int]):
         pass
     
     @abstractmethod
-    def get_sample_rows(self, dataset: int, sheet: int) -> list[list[str]]: # Add list[row_obj] later 
+    def remove_unedited_row_indices(self, dataset: int, sheet: int, indices: list[int]):
+        pass
+    
+    @abstractmethod
+    def get_sample_rows(self, dataset: int, sheet: int, num_rows: int) -> list[list[str]]: 
         pass
     
     @abstractmethod
@@ -46,11 +35,19 @@ class Cache(ABC):
         pass
     
     @abstractmethod
-    def set_cell_data(self, dataset: int, sheet: int, row: int, col: int, data: str):
+    def set_col(self, dataset: int, sheet: int, col: int, data: tuple[str, list[str]]):
+        pass
+    
+    @abstractmethod
+    def get_col(self, dataset: int, sheet: int, col: int) -> tuple[list[str]]:
         pass
         
     @abstractmethod
-    def get_cell_data(self, dataset: int, sheet: int, row: int, col: int) -> str:
+    def set_cell(self, dataset: int, sheet: int, row: int, col: int, data: str):
+        pass
+        
+    @abstractmethod
+    def get_cell(self, dataset: int, sheet: int, row: int, col: int) -> str:
         pass
         
     @abstractmethod
