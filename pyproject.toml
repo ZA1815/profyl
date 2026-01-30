@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "profyl"
+version = "0.1.0"
+dependencies = [
+    "pandas",
+    "redis",
+    "openpyxl"
+]
+description = "MCP server that cleans and profiles your datasets"
+license = "MIT"
