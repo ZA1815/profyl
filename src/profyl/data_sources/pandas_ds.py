@@ -1,4 +1,4 @@
-from abstractions.data_source import DataSource
+from profyl.abstractions.data_source import DataSource
 import pandas as pd
 
 class PandasDataSource(DataSource):
@@ -12,19 +12,20 @@ class PandasDataSource(DataSource):
         
     def read_row(self, sheet: int, row: int) -> list[str]:
         sheet_df = self._get_sheet_df(sheet)
-        
-        return sheet_df.iloc[row].tolist()
+        row_vals: list = sheet_df.iloc[row].tolist()
+        return list(map(str, row_vals))
     
     def read_headers(self, sheet: int) -> list[str]:
         sheet_df = self._get_sheet_df(sheet)
-        return sheet_df.columns.tolist()
+        headers: list = sheet_df.columns.tolist()
+        return list(map(str, headers))
         
     def read_col(self, sheet: int, col: int) -> tuple[str, list[str]]:
         sheet_df = self._get_sheet_df(sheet)
         col_name: str = str(sheet_df.columns[col])
-        col_vals = sheet_df.iloc[:, col].tolist()
+        col_vals: list = sheet_df.iloc[:, col].tolist()
         
-        return (col_name, col_vals)
+        return (col_name, list(map(str, col_vals)))
     
     def get_sheet_count(self) -> int:
         return len(self.data)
