@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from data_source import DataSource
+from profyl.abstractions.data_source import DataSource
 
 class Cache(ABC):
     def populate_from(self, data_source: DataSource, dataset: int):

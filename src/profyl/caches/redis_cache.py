@@ -1,4 +1,4 @@
-from abstractions.cache import Cache
+from profyl.abstractions.cache import Cache
 import redis
 import json
 
@@ -10,14 +10,14 @@ class RedisCache(Cache):
         
     def get_unique_vals(self, dataset: int, sheet: int, col: int) -> set[str]:
         col_vals = self.get_col(dataset, sheet, col)
-        return set(col_vals[1])
+        return set(col_vals)
         
     def add_unedited_row_indices(self, dataset: int, sheet: int, indices: set[int]):
         self.r.sadd(f"unedited:{dataset}#{sheet}", *indices)
         
     def remove_unedited_row_indices(self, dataset: int, sheet: int, indices: list[int]):
         self.r.srem(f"unedited:{dataset}#{sheet}", *indices)
-        
+    
     def get_sample_rows(self, dataset: int, sheet: int, num_rows: int) -> list[list[str]]:
         raw_data = self.r.srandmember(f"unedited:{dataset}#{sheet}", num_rows)
         indices = [json.loads(s) for s in raw_data]
