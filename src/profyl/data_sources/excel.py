@@ -1,7 +1,7 @@
 from profyl.abstractions.data_source import DataSource
 import pandas as pd
 
-class PandasDataSource(DataSource):
+class ExcelDataSource(DataSource):
     def __init__(self) -> None:
         self.data: dict[str, pd.DataFrame] = {}
         self.sheet_names = []
