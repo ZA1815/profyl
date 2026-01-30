@@ -15,6 +15,10 @@ class PandasDataSource(DataSource):
         
         return sheet_df.iloc[row].tolist()
     
+    def read_headers(self, sheet: int) -> list[str]:
+        sheet_df = self._get_sheet_df(sheet)
+        return sheet_df.columns.tolist()
+        
     def read_col(self, sheet: int, col: int) -> tuple[str, list[str]]:
         sheet_df = self._get_sheet_df(sheet)
         col_name: str = str(sheet_df.columns[col])

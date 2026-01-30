@@ -10,6 +10,10 @@ class DataSource(ABC):
         pass
     
     @abstractmethod
+    def read_headers(self, sheet) -> list[str]:
+        pass
+        
+    @abstractmethod
     def read_col(self, sheet: int, col: int) -> tuple[str, list[str]]: # Add list[col_obj] later
         pass
     
