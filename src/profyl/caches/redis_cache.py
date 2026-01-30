@@ -1,12 +1,16 @@
 from profyl.abstractions.cache import Cache
 import redis
 import json
+import os
 
 class RedisCache(Cache):
-    def __init__(self, host="localhost", port=6379) -> None:
-        self.r = redis.Redis(host=host, port=port, db=0, decode_responses=True)
-        if not self.r.ping():
-            raise ConnectionError(f"Failed to connect to Redis on host='{host}', port='{port}'")
+    def __init__(self) -> None:
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.r = redis.from_url(redis_url, decode_responses=True)
+        try:
+            self.r.ping()
+        except redis.ConnectionError:
+            print("Redis connection failed.")
         
     def get_unique_vals(self, dataset: int, sheet: int, col: int) -> set[str]:
         col_vals = self.get_col(dataset, sheet, col)
