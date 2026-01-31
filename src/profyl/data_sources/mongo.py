@@ -1,7 +1,6 @@
 from profyl.abstractions.data_source import DataSource
 from pymongo import MongoClient
 import os
-from bson.objectid import ObjectId
 
 class MongoDataSource(DataSource):
     def __init__(self, db_name: str = "test", collection_name: str = "datasets") -> None:
@@ -18,7 +17,7 @@ class MongoDataSource(DataSource):
         self.data = {}
     
     def load(self, source: str):
-        self.data = self.collection.find_one({"_id": ObjectId(source)})
+        self.data = self.collection.find_one({"_id": source})
         try:
             sheets = self.data["sheets"]
         except KeyError:
@@ -36,7 +35,7 @@ class MongoDataSource(DataSource):
     def read_row(self, sheet: int, row: int) -> list[str]:
         return self.data["sheets"][sheet]["rows"][row]
         
-    def read_headers(self, sheet) -> list[str]:
+    def read_headers(self, sheet: int) -> list[str]:
         return self.data["sheets"][sheet]["headers"]
         
     def read_col(self, sheet: int, col: int) -> tuple[str, list[str]]:
