@@ -1,5 +1,6 @@
 from profyl.abstractions.data_source import DataSource
 import pandas as pd
+import json
 
 class ExcelDataSource(DataSource):
     def __init__(self) -> None:
@@ -9,6 +10,24 @@ class ExcelDataSource(DataSource):
     def load(self, source: str):
         self.data = pd.read_excel(source, sheet_name=None)
         self.sheet_names = list(self.data.keys())
+    
+    def get_schema_map_payload(self, num_samples: int) -> str:
+        payload = {
+            "Original Headers": {},
+            "Sample Data": {}
+        }
+        for sheet_idx, _ in enumerate(self.sheet_names):
+            payload["Original Headers"][f"Sheet {sheet_idx + 1}"] = self.read_headers(sheet_idx)
+            row_count = self.get_row_count(sheet_idx)
+            if row_count < num_samples:
+                for idx in row_count:
+                    payload["Sample Data"].setdefault(f"Sheet {sheet_idx + 1}", {})[f"Row {idx + 1}"] = self.read_row(sheet_idx, idx)
+            else:
+                sample_indices = [i * row_count // num_samples for i in range(num_samples)]
+                for idx in sample_indices:
+                    payload["Sample Data"].setdefault(f"Sheet {sheet_idx + 1}", {})[f"Row {idx + 1}"] = self.read_row(sheet_idx, idx)
+        
+        return json.dumps(payload)
         
     def read_row(self, sheet: int, row: int) -> list[str]:
         sheet_df = self._get_sheet_df(sheet)
