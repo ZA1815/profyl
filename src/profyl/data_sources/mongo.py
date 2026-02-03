@@ -4,8 +4,8 @@ import os
 import json
 
 class MongoDataSource(DataSource):
-    def __init__(self, db_name: str = "test", collection_name: str = "datasets") -> None:
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    def __init__(self, collection_name: str = "datasets") -> None:
+        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/test")
         try:
             self.client = MongoClient(mongo_uri)
             self.client.admin.command("ping")
@@ -13,7 +13,7 @@ class MongoDataSource(DataSource):
             print(f"Connection failed: {e}")
             return
         
-        self.db = self.client[db_name]
+        self.db = self.client.get_database()
         self.collection = self.db[collection_name]
         self.data = {}
     
