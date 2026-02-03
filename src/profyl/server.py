@@ -10,6 +10,8 @@ mcp = FastMCP("profyl", json_response=True)
 data_source_type = os.getenv("DATA_SOURCE_TYPE")
 if data_source_type == "excel":
     data_source = ExcelDataSource()
+    # Add an ENV VAR for passing in the file path
+    
 elif data_source_type == "mongo":
     collection_name = os.getenv("MONGO_COLLECTION_NAME")
     if collection_name is not None:
@@ -32,6 +34,7 @@ if cache_type == "redis":
 else:
     raise ValueError(f"{cache_type} is not a supported cache type.")
 
+# THIS SCHEMA MAPPING IS WRONG, WE HAVE TO COMPARE BETWEEN SHEETS INSIDE DATASETS, NOT BETWEEN SHEETS INSIDE THE SAME DATASET
 @mcp.prompt()
 def generate_schema_mapping(num_samples: int) -> Any:
     payload = data_source.get_schema_map_payload(num_samples)
