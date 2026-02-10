@@ -3,12 +3,7 @@ from profyl.core.abstractions import DataSource
 
 class Cache(ABC):
     def populate_from(self, data_source: DataSource, dataset: int):
-        for sheet in range(data_source.get_sheet_count()):
-            self.set_headers(dataset, sheet, data_source.read_headers(sheet))
-            self.add_unedited_row_indices(dataset, sheet, set(range(data_source.get_row_count(sheet))))
-            for row in range(data_source.get_row_count(sheet)):
-                row_data = data_source.read_row(sheet, row)
-                self.set_row(dataset, sheet, row, row_data)
+        
                 
     @abstractmethod
     def get_unique_vals(self, dataset: int, sheet: int, col: int) -> set[str]:
