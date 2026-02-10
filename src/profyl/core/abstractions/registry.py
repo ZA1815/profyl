@@ -1,29 +1,40 @@
 from abc import ABC, abstractmethod
-from profyl.core.abstractions.data_source import DataSource
+from dataclasses import dataclass
 from enum import Enum, auto
+from typing import ValuesView
 
 class Status(Enum):
     Registered = auto()
     Loaded = auto()
     Ready = auto()
     
+class DataSourceType(Enum):
+    Excel = auto()
+    MongoDB = auto()
+
+@dataclass
+class Entry:
+    source: DataSourceType
+    reference: str
+    status: Status = Status.Registered
+    
 class Registry(ABC):
     @abstractmethod
-    def add(source: DataSource, reference: str, key: str) -> None:
+    def add(self, source: DataSourceType, reference: str, key: str) -> None:
         pass
     
     @abstractmethod
-    def get(key: str) -> tuple[DataSource, str]:
+    def get(self, key: str) -> Entry:
         pass
     
     @abstractmethod
-    def remove(key: str) -> None:
+    def remove(self, key: str) -> None:
         pass
     
     @abstractmethod
-    def list_all() -> list[tuple[str, tuple[DataSource, str]]]:
+    def get_all(self) -> ValuesView[Entry]:
         pass
         
     @abstractmethod
-    def update_status(status: Status) -> None:
+    def update_status(self, key: str, status: Status) -> None:
         pass
