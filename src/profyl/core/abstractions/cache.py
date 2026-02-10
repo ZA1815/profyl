@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
-from profyl.core.abstractions import DataSource
 
 class Cache(ABC):
-    def populate_from(self, data_source: DataSource, dataset: int):
-        
-                
     @abstractmethod
     def get_unique_vals(self, dataset: int, sheet: int, col: int) -> set[str]:
         pass
