@@ -1,4 +1,12 @@
 from abc import ABC, abstractmethod
+from typing import Any
+from dataclasses import dataclass
+
+@dataclass
+class SheetData:
+    name: str
+    headers: list[str]
+    rows: list[list[str]]
 
 class DataSource(ABC):
     @abstractmethod
@@ -18,6 +26,10 @@ class DataSource(ABC):
         
     @abstractmethod
     def read_col(self, sheet: int, col: int) -> tuple[str, list[str]]: # Add list[col_obj] later
+        pass
+    
+    @abstractmethod
+    def save(self, data: list[SheetData]):
         pass
     
     @abstractmethod

@@ -2,14 +2,18 @@ from profyl.core.abstractions import DataSource
 import pandas as pd
 import json
 
+from profyl.core.abstractions.data_source import SheetData
+
 class ExcelDataSource(DataSource):
     def __init__(self) -> None:
         self.data: dict[str, pd.DataFrame] = {}
         self.sheet_names = []
+        self.source = ""
     
     def load(self, source: str):
         self.data = pd.read_excel(source, sheet_name=None)
         self.sheet_names = list(self.data.keys())
+        self.source = source
     
     def get_schema_map_payload(self, num_samples: int) -> str:
         payload = {
@@ -45,6 +49,17 @@ class ExcelDataSource(DataSource):
         col_vals: list = sheet_df.iloc[:, col].tolist()
         
         return (col_name, list(map(str, col_vals)))
+    
+    def save(self, data: list[SheetData]):
+        self.data.clear()
+        self.sheet_names.clear()
+        
+        with pd.ExcelWriter(self.source) as ew:
+            for sheet in data:
+                self.sheet_names.append(sheet.name)
+                self.data[sheet.name] = pd.DataFrame(sheet.rows, columns=sheet.headers)
+                self.data[sheet.name].to_excel(ew, sheet_name=sheet.name, index=False)
+                # Could add formatting here later using openpyxl
     
     def get_sheet_count(self) -> int:
         return len(self.data)

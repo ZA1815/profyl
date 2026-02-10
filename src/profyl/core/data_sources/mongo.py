@@ -1,5 +1,6 @@
 from profyl.core.abstractions import DataSource
-from pymongo import MongoClient
+from profyl.core.abstractions.data_source import SheetData
+from pymongo import MongoClient, ReplaceOne
 import os
 import json
 
@@ -16,9 +17,11 @@ class MongoDataSource(DataSource):
         self.db = self.client.get_database()
         self.collection = self.db[collection_name]
         self.data = {}
+        self.source = ""
     
     def load(self, source: str):
         self.data = self.collection.find_one({"_id": source})
+        self.source = source
         try:
             sheets = self.data["sheets"]
         except KeyError:
@@ -27,10 +30,11 @@ class MongoDataSource(DataSource):
         
         try:
             for sheet in sheets:
+                sheet["name"]
                 sheet["headers"]
                 sheet["rows"]
         except KeyError:
-            print("KeyError: 'headers' or 'rows' keys don't exist in every item in 'sheets'.")
+            print("KeyError: 'name', 'headers' or 'rows' keys don't exist in every item in 'sheets'.")
             return
     
     def get_schema_map_payload(self, num_samples: int) -> str:
@@ -64,7 +68,16 @@ class MongoDataSource(DataSource):
             col_data.append(row[col])
             
         return (header, col_data)
+    
+    def save(self, data: list[SheetData]):
+        self.data.clear()
+        self.data["sheets"] = []
         
+        for sheet in data:
+            self.data["sheets"].append({"name": sheet.name, "headers": sheet.headers, "rows": sheet.rows})
+        
+        ReplaceOne({"_id": self.source}, self.data, upsert=True)
+            
     def get_sheet_count(self) -> int:
         return len(self.data["sheets"])
         
