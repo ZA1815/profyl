@@ -1,8 +1,8 @@
 from typing import Any
 from mcp.server.fastmcp import FastMCP
-from profyl.data_sources.excel import ExcelDataSource
-from profyl.data_sources.mongo import MongoDataSource
-from profyl.caches.redis_cache import RedisCache
+from profyl.core.data_sources import ExcelDataSource
+from profyl.core.data_sources import MongoDataSource
+from profyl.core.caches import RedisCache
 import os
 
 mcp = FastMCP("profyl", json_response=True)

@@ -1,4 +1,4 @@
-from profyl.abstractions.cache import Cache
+from profyl.core.abstractions import Cache
 import redis
 import json
 import os

@@ -1,4 +1,4 @@
-from profyl.abstractions.data_source import DataSource
+from profyl.core.abstractions import DataSource
 from pymongo import MongoClient
 import os
 import json
