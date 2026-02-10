@@ -1,3 +1,5 @@
+from datetime import datetime
+from time import timezone
 from typing import ValuesView
 from profyl.core.abstractions import Registry, Status, DataSourceType, Entry
 
@@ -6,7 +8,7 @@ class DictRegistry(Registry):
         self.reg = {}
     
     def add(self, source: DataSourceType, reference: str, key: str) -> None:
-        self.reg[key] = Entry(source, reference)
+        self.reg[key] = Entry(source, reference, datetime.now(timezone.utc))
         
     def get(self, key: str) -> Entry:
         return self.reg[key]

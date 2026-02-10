@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum, auto
 from typing import ValuesView
 
@@ -16,6 +17,7 @@ class DataSourceType(Enum):
 class Entry:
     source: DataSourceType
     reference: str
+    timestamp: datetime
     status: Status = Status.Registered
     
 class Registry(ABC):
