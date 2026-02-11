@@ -1,3 +1,4 @@
+import json
 import threading
 from typing import Any
 from profyl.core.abstractions.cache import Cache
@@ -25,6 +26,15 @@ class Manager:
                 self.cache.set_row(self.ds_count, sheet, row, row_data)
         
         self.ds_count += 1
+    
+    def build_schema_map_payload(self, num_samples: int) -> str:
+        schema_map_list = []
+        for (key, entry) in self.reg.get_all():
+            entry_schema = entry.source.get_schema_map_payload(num_samples)
+            entry_schema["Dataset Name"] = key
+            schema_map_list.append(entry_schema)
+        
+        return json.dumps(schema_map_list)
     
     def start_mcp(self):
         mcp = FastMCP("profyl", json_response=True)

@@ -13,7 +13,8 @@ class DataSource(ABC):
     def load(self, source: str):
         pass
     
-    def get_schema_map_payload(self, num_samples: int) -> str:
+    @abstractmethod
+    def get_schema_map_payload(self, num_samples: int) -> dict[str, Any]:
         pass
     
     @abstractmethod

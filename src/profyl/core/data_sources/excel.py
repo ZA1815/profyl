@@ -1,6 +1,6 @@
+from typing import Any
 from profyl.core.abstractions import DataSource
 import pandas as pd
-import json
 
 from profyl.core.abstractions.data_source import SheetData
 
@@ -15,8 +15,9 @@ class ExcelDataSource(DataSource):
         self.sheet_names = list(self.data.keys())
         self.source = source
     
-    def get_schema_map_payload(self, num_samples: int) -> str:
+    def get_schema_map_payload(self, num_samples: int) -> dict[str, Any]:
         payload = {
+            "Dataset Name": "",
             "Original Headers": {},
             "Sample Data": {}
         }
@@ -31,7 +32,7 @@ class ExcelDataSource(DataSource):
                 for idx in sample_indices:
                     payload["Sample Data"].setdefault(f"Sheet {sheet_idx + 1}", {})[f"Row {idx + 1}"] = self.read_row(sheet_idx, idx)
         
-        return json.dumps(payload)
+        return payload
         
     def read_row(self, sheet: int, row: int) -> list[str]:
         sheet_df = self._get_sheet_df(sheet)

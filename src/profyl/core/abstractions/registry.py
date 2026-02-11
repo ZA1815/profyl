@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
-from typing import ValuesView
+from typing import ItemsView
 from profyl.core.abstractions.data_source import DataSource
 
 class Status(Enum):
@@ -35,7 +35,7 @@ class Registry(ABC):
         pass
     
     @abstractmethod
-    def get_all(self) -> ValuesView[Entry]:
+    def get_all(self) -> ItemsView[str, Entry]:
         pass
         
     @abstractmethod

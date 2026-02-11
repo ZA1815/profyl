@@ -1,6 +1,6 @@
 from datetime import datetime
 from time import timezone
-from typing import ValuesView
+from typing import ItemsView
 from profyl.core.abstractions import Registry, Status, DataSourceType, Entry
 from profyl.core.data_sources.excel import ExcelDataSource
 from profyl.core.data_sources.mongo import MongoDataSource
@@ -26,8 +26,8 @@ class DictRegistry(Registry):
     def remove(self, key: str) -> None:
         del self.reg[key]
         
-    def get_all(self) -> ValuesView[Entry]:
-        return self.reg.values()
+    def get_all(self) -> ItemsView[str, Entry]:
+        return self.reg.items()
     
     def update_status(self, key: str, status: Status) -> None:
         self.reg[key].status = status

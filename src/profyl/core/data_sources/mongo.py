@@ -1,8 +1,8 @@
+from typing import Any
 from profyl.core.abstractions import DataSource
 from profyl.core.abstractions.data_source import SheetData
 from pymongo import MongoClient, ReplaceOne
 import os
-import json
 
 class MongoDataSource(DataSource):
     def __init__(self, collection_name: str = "datasets") -> None:
@@ -37,8 +37,9 @@ class MongoDataSource(DataSource):
             print("KeyError: 'name', 'headers' or 'rows' keys don't exist in every item in 'sheets'.")
             return
     
-    def get_schema_map_payload(self, num_samples: int) -> str:
+    def get_schema_map_payload(self, num_samples: int) -> dict[str, Any]:
         payload = {
+            "Dataset Name": "",
             "Original Headers": {},
             "Sample Data": {}
         }
@@ -52,8 +53,8 @@ class MongoDataSource(DataSource):
                 sample_indices = [i * row_count // num_samples for i in range(num_samples)]
                 for idx in sample_indices:
                     payload["Sample Data"].setdefault(f"Sheet {sheet_idx + 1}", {})[f"Row {idx + 1}"] = self.read_row(sheet_idx, idx)
-            
-        return json.dumps(payload)
+        
+        return payload
     
     def read_row(self, sheet: int, row: int) -> list[str]:
         return self.data["sheets"][sheet]["rows"][row]
