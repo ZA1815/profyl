@@ -1,5 +1,4 @@
-from datetime import datetime
-from time import timezone
+from datetime import datetime, timezone
 from typing import ItemsView
 from profyl.core.abstractions import Registry, Status, DataSourceType, Entry
 from profyl.core.data_sources.excel import ExcelDataSource

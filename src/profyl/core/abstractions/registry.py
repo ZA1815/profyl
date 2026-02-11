@@ -14,6 +14,9 @@ class DataSourceType(Enum):
     Excel = auto()
     MongoDB = auto()
 
+class RegistryType(str, Enum):
+    PythonDict = auto()
+
 @dataclass
 class Entry:
     source: DataSource
