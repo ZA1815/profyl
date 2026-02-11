@@ -1,5 +1,6 @@
 from profyl.core.abstractions import Cache
 import redis
+from itertools import islice
 import json
 import os
 
@@ -93,3 +94,11 @@ class RedisCache(Cache):
             return True
         else:
             return False
+    
+    def remove_dataset(self, dataset: int):
+        key_gen = self.r.scan_iter(match=f"*:{dataset}#*")
+        while True:
+            batch = list(islice(key_gen, 500))
+            if not batch:
+                break
+            self.r.unlink(batch)

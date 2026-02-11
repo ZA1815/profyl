@@ -17,6 +17,7 @@ class DataSourceType(Enum):
 @dataclass
 class Entry:
     source: DataSource
+    source_num: int
     reference: str
     timestamp: datetime
     status: Status = Status.Registered

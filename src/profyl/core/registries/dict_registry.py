@@ -8,6 +8,7 @@ from profyl.core.data_sources.mongo import MongoDataSource
 class DictRegistry(Registry):
     def __init__(self) -> None:
         self.reg = {}
+        self.source_num = 0
     
     def add(self, source: DataSourceType, reference: str, key: str) -> None:
         match source:
@@ -18,7 +19,8 @@ class DictRegistry(Registry):
                 data_source = MongoDataSource()
                 data_source.load(reference)
                 
-        self.reg[key] = Entry(data_source, reference, datetime.now(timezone.utc))
+        self.reg[key] = Entry(data_source, self.source_num, reference, datetime.now(timezone.utc))
+        self.source_num += 1
         
     def get(self, key: str) -> Entry:
         return self.reg[key]

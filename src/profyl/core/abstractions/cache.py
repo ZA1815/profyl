@@ -48,3 +48,7 @@ class Cache(ABC):
     @abstractmethod
     def value_cross_ref(self, dataset: int, sheet: int, col: int, val: str) -> bool:
         pass
+    
+    @abstractmethod
+    def remove_dataset(self, dataset: int):
+        pass

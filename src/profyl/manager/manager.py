@@ -9,23 +9,26 @@ class Manager:
     def __init__(self, registry: Registry, cache: Cache) -> None:
         self.reg = registry
         self.cache = cache
-        self.ds_count = 0
     
-    def register_dataset(self, source: DataSourceType, reference: str, key: str):
+    def register_dataset(self, source: DataSourceType, reference: str, key: str) -> None:
         self.reg.add(source, reference, key)
     
     def load_dataset(self, key: str):
         entry = self.reg.get(key)
         data_source = entry.source
+        source_num = entry.source_num
         
         for sheet in range(data_source.get_sheet_count()):
-            self.cache.set_headers(self.ds_count, sheet, data_source.read_headers(sheet))
-            self.cache.add_unedited_row_indices(self.ds_count, sheet, set(range(data_source.get_row_count(sheet))))
+            self.cache.set_headers(source_num, sheet, data_source.read_headers(sheet))
+            self.cache.add_unedited_row_indices(source_num, sheet, set(range(data_source.get_row_count(sheet))))
             for row in range(data_source.get_row_count(sheet)):
                 row_data = data_source.read_row(sheet, row)
-                self.cache.set_row(self.ds_count, sheet, row, row_data)
-        
-        self.ds_count += 1
+                self.cache.set_row(source_num, sheet, row, row_data)
+    
+    def remove_dataset(self, key: str):
+        entry = self.reg.get(key)
+        self.cache.remove_dataset(entry.source_num)
+        self.reg.remove(key)
     
     def build_schema_map_payload(self, num_samples: int) -> str:
         schema_map_list = []
@@ -41,7 +44,7 @@ class Manager:
         
         @mcp.prompt()
         def generate_schema_mapping(num_samples: int) -> Any:
-            payload = self.data_source.get_schema_map_payload(num_samples)
+            payload = self.build_schema_map_payload(num_samples)
             
             return f"""I need you to generate a schema mapping based on the data below. 
             Please analyze the field names and sample values to propose relationships.
