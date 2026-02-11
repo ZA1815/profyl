@@ -10,7 +10,7 @@ class Manager:
         self.reg = registry
         self.cache = cache
     
-    def register_dataset(self, source: DataSourceType, reference: str, key: str) -> None:
+    def register_dataset(self, key: str, source: DataSourceType, reference: str) -> None:
         self.reg.add(source, reference, key)
     
     def load_dataset(self, key: str):
@@ -29,6 +29,16 @@ class Manager:
         entry = self.reg.get(key)
         self.cache.remove_dataset(entry.source_num)
         self.reg.remove(key)
+    
+    def list_datasets(self):
+        entries = self.reg.get_all()
+        for key, entry in entries:
+            print(f"Dataset '{key}':")
+            print(f"Source: {entry.source}")
+            print(f"Reference: {entry.reference}")
+            print(f"Timestamp: {entry.timestamp}")
+            print(f"Status: {entry.status}")
+            print("")
     
     def build_schema_map_payload(self, num_samples: int) -> str:
         schema_map_list = []

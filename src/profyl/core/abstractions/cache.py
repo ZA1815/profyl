@@ -1,4 +1,8 @@
 from abc import ABC, abstractmethod
+from enum import Enum, auto
+
+class CacheType(Enum):
+    Redis = auto()
 
 class Cache(ABC):
     @abstractmethod

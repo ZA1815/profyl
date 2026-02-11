@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import ItemsView
 from profyl.core.abstractions import Registry, Status, DataSourceType, Entry
 from profyl.core.data_sources.excel import ExcelDataSource
-from profyl.core.data_sources.mongo import MongoDataSource
+from profyl.core.data_sources.mongodb import MongoDBDataSource
 
 class DictRegistry(Registry):
     def __init__(self) -> None:
@@ -15,7 +15,7 @@ class DictRegistry(Registry):
                 data_source = ExcelDataSource()
                 data_source.load(reference)
             case DataSourceType.MongoDB:
-                data_source = MongoDataSource()
+                data_source = MongoDBDataSource()
                 data_source.load(reference)
                 
         self.reg[key] = Entry(data_source, self.source_num, reference, datetime.now(timezone.utc))

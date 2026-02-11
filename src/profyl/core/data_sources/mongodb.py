@@ -4,7 +4,7 @@ from profyl.core.abstractions.data_source import SheetData
 from pymongo import MongoClient, ReplaceOne
 import os
 
-class MongoDataSource(DataSource):
+class MongoDBDataSource(DataSource):
     def __init__(self, collection_name: str = "datasets") -> None:
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/test")
         try:
