@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
 from typing import ValuesView
+from profyl.core.abstractions.data_source import DataSource
 
 class Status(Enum):
     Registered = auto()
@@ -15,7 +16,7 @@ class DataSourceType(Enum):
 
 @dataclass
 class Entry:
-    source: DataSourceType
+    source: DataSource
     reference: str
     timestamp: datetime
     status: Status = Status.Registered
