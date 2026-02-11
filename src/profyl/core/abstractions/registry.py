@@ -15,7 +15,7 @@ class DataSourceType(Enum):
     MongoDB = auto()
 
 class RegistryType(str, Enum):
-    PythonDict = auto()
+    Dict = "Dict"
 
 @dataclass
 class Entry:
