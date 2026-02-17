@@ -15,4 +15,4 @@ description = "MCP server that cleans and profiles your datasets"
 license = "MIT"
 
 [project.scripts]
-profyl = "profyl.src.profyl.adapters.cli:cli"
+profyl = "profyl.adapters.cli:cli"
