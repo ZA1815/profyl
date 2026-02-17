@@ -1,8 +1,12 @@
+import pickle
+import socket
+import struct
 import subprocess
 import sys
+from pathlib import Path
 from profyl.core.abstractions.cache import CacheType
-from profyl.core.abstractions.registry import RegistryType
-from profyl.core.commands.commands import InitCommand
+from profyl.core.abstractions.registry import DataSourceType, RegistryType
+from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, SchemaMapCommand, StartMCPCommand
 import typer
 from typer.params import Annotated, Optional
 
@@ -11,29 +15,28 @@ cli = typer.Typer()
 @cli.command()
 def start(
     ctx: typer.Context,
-    host: Annotated[str, typer.Option("localhost", "--host", help="Host machine IP")],
-    port: Annotated[int, typer.Option(8000, "--port", help="Host machine port")]
+    host: Annotated[str, typer.Option(help="Host machine IP")] = "localhost",
+    port: Annotated[int, typer.Option(help="Host machine port")] = 8000
 ):
+    out_path = Path(".profyl/daemon_out.log")
+    err_path = Path(".profyl/daemon_err.log")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    err_path.parent.mkdir(parents=True, exist_ok=True)
+    popen_kwargs = {
+        "args": [sys.executable, "-u", "-m", "profyl.daemon", f"{host}", f"{port}"],
+        "stdin": subprocess.DEVNULL,
+        "stdout": open(out_path, 'w'),
+        "stderr": open(err_path, 'w'),
+        "close_fds": True
+    }
+    
     if sys.platform == "win32":
-        subprocess.Popen(
-            [sys.executable, "-u", "-m", "profyl.daemon", f"{host}", f"{port}"],
-            stdin=subprocess.DEVNULL,
-            stdout=open(".profyl/daemon_out.log", 'a'),
-            stderr=open(".profyl/daemon_err.log", 'a'),
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-            close_fds=True
-        )
+        popen_kwargs.update({ "creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW })
         
     else:
-        subprocess.Popen(
-            [sys.executable, "-u", "-m", "profyl.daemon", f"{host}", f"{port}"],
-            stdin=subprocess.DEVNULL,
-            stdout=open(".profyl/daemon_out.log", 'a'),
-            stderr=open(".profyl/daemon_err.log", 'a'),
-            start_new_session=True,
-            close_fds=True
-        )
+        popen_kwargs.update({ "start_new_session": True })
     
+    subprocess.Popen(**popen_kwargs)
 
 @cli.command()
 def init(
@@ -56,7 +59,69 @@ def init(
         if authz:
             raise ctx.fail("The --authz flag cannot be used without --namespacing turned on")
     
-    InitCommand(registry, cache)
+    command = InitCommand("test project", registry, cache)
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+
+@cli.command()
+def register(
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Dataset identifier")],
+    source: Annotated[DataSourceType, typer.Argument(help="DataSource type", case_sensitive=False)],
+    reference: Annotated[str, typer.Argument(help="String to access DataSource")],
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+    command = RegisterDatasetCommand("test project", key, source, reference)
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+    
+@cli.command()
+def load(
+    key: Annotated[str, typer.Argument(help="Identifier for dataset")]
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+    command = LoadDatasetCommand("test project", key)
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+
+@cli.command()
+def remove(
+    key: Annotated[str, typer.Argument(help="Identifier for dataset")]
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+    command = RemoveDatasetCommand("test project", key)
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+
+@cli.command()
+def list(
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+   command = ListDatasetsCommand("test project")
+   data = pickle.dumps(command)
+   connect("localhost", 8000, data)
+
+@cli.command()
+def start_mcp(
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+    command = StartMCPCommand("test project")
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+
+@cli.command()
+def schema_map(
+    num_samples: int = typer.Option(25, help="Number of samples from each dataset")
+    # Add project param here once I add persistent state through file and check if namespacing is on
+):
+    command = SchemaMapCommand("test project", num_samples)
+    data = pickle.dumps(command)
+    connect("localhost", 8000, data)
+
+def connect(host: str, port: int, data: bytes):
+    with socket.create_connection((host, port)) as s:
+        s.sendall(struct.pack("!I", len(data)))
+        s.sendall(data)
     
 if __name__ == "__main__":
     cli()

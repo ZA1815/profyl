@@ -10,9 +10,9 @@ class Status(Enum):
     Loaded = auto()
     Ready = auto()
     
-class DataSourceType(Enum):
-    Excel = auto()
-    MongoDB = auto()
+class DataSourceType(str, Enum):
+    Excel = "Excel"
+    MongoDB = "MongoDB"
 
 class RegistryType(str, Enum):
     Dict = "Dict"
