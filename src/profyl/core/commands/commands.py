@@ -17,9 +17,13 @@ class ProjectMixin:
     project: str
 
 @dataclass
-class InitCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class InitCommand():
     registry: RegistryType
     cache: CacheType
+    auth: bool
+    namespacing: bool
+    project: str | None
+    authz: bool
 
 @dataclass
 class RegisterDatasetCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):

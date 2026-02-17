@@ -8,7 +8,7 @@ from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
 from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, SchemaMapCommand, StartMCPCommand
 import typer
-from typer.params import Annotated, Optional
+from typer.params import Annotated
 
 cli = typer.Typer()
 
@@ -45,7 +45,7 @@ def init(
     cache: Annotated[CacheType, typer.Argument(help="Cache type", case_sensitive=False)],
     auth: bool = typer.Option(False, "--auth", help="Enable authentication"),
     namespacing: bool = typer.Option(False, "--namespacing", help="Enable project namespacing"),
-    project: Annotated[Optional[str], typer.Option("--project", help="Project name (required if namespacing is on)")] = None,
+    project: Annotated[str | None, typer.Option("--project", help="Project name (required if namespacing is on)")] = None,
     authz: bool = typer.Option(False, "--authz", help="Enable authorization (requires namespacing to be on)")
 ):
     if namespacing and not project:
@@ -59,7 +59,7 @@ def init(
         if authz:
             raise ctx.fail("The --authz flag cannot be used without --namespacing turned on")
     
-    command = InitCommand("test project", registry, cache)
+    command = InitCommand(registry, cache, auth, namespacing, project, authz)
     data = pickle.dumps(command)
     connect("localhost", 8000, data)
 
@@ -71,7 +71,7 @@ def register(
     reference: Annotated[str, typer.Argument(help="String to access DataSource")],
     # Add project param here once I add persistent state through file and check if namespacing is on
 ):
-    command = RegisterDatasetCommand("test project", key, source, reference)
+    command = RegisterDatasetCommand("Namespacing not active", key, source, reference)
     data = pickle.dumps(command)
     connect("localhost", 8000, data)
     
@@ -95,9 +95,10 @@ def remove(
 
 @cli.command()
 def list(
+    key: str = typer.Option("All projects", "--project", help="Project to list datasets for")
     # Add project param here once I add persistent state through file and check if namespacing is on
 ):
-   command = ListDatasetsCommand("test project")
+   command = ListDatasetsCommand(key)
    data = pickle.dumps(command)
    connect("localhost", 8000, data)
 
@@ -122,6 +123,9 @@ def connect(host: str, port: int, data: bytes):
     with socket.create_connection((host, port)) as s:
         s.sendall(struct.pack("!I", len(data)))
         s.sendall(data)
+        recv = s.recv(1024)
+        text = recv.decode("utf-8")
+        print(text)
     
 if __name__ == "__main__":
     cli()
