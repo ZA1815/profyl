@@ -77,9 +77,9 @@ def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
         
     else:
         if len(projects) == 0:
-            projects["Namespacing not active"] = dict_to_insert
+            projects["Namespacing not enabled"] = dict_to_insert
         else:
-            # Will have to create some kind of modify operation for this to work
+            # Will have to create some kind of modify operation for this to work (file watcher)
             error = "[profyl] ERROR: A project already exists, for more, turn on namespacing".encode("utf-8")
             buffer.extend(error)
             return

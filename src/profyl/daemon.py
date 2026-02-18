@@ -6,8 +6,10 @@ from sys import argv
 from profyl.pipeline.dispatch import dispatch_command
 
 class Daemon:
-    def __init__(self) -> None:
+    def __init__(self, namespacing: bool, secret_key: str | None) -> None:
         self.projects = {}
+        self.namespacing = namespacing
+        self.secret_key = secret_key
     
     async def run(self, host: str, port: int):
         server = await asyncio.start_server(self.handle_connections, host, port)
@@ -25,7 +27,7 @@ class Daemon:
         await writer.drain()
     
 async def main(argv: list[str]):
-    daemon = Daemon()
+    daemon = Daemon(argv[3], argv[4])
     await daemon.run(argv[1], int(argv[2]))
 
 if __name__ == "__main__":

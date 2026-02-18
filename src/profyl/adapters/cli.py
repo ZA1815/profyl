@@ -1,9 +1,16 @@
+# USE FILE WATCHER TO CHECK FOR CHANGES IN TOML CONFIG
+# I DON'T HAVE DUPLICATE CHECKS YET FOR LOADING, MAKE SURE TO ADD THAT
+# CLEAN UP THE BODIES OF THE FUNCTIONS INTO A HELPER
+
 import pickle
 import socket
 import struct
 import subprocess
 import sys
+import os
+import tomllib
 from pathlib import Path
+from profyl.adapters.error import ConfigError, ProjectError
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
 from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, SchemaMapCommand, StartMCPCommand
@@ -16,25 +23,42 @@ cli = typer.Typer()
 def start(
     ctx: typer.Context,
     host: Annotated[str, typer.Option(help="Host machine IP")] = "localhost",
-    port: Annotated[int, typer.Option(help="Host machine port")] = 8000
+    port: Annotated[int, typer.Option(help="Host machine port")] = 8000,
+    namespacing: Annotated[bool, typer.Option(help="Enable namespacing")] = False,
+    auth: Annotated[bool, typer.Option(help="Enable authentication")] = False
 ):
+    info_path = Path(".profyl/config.toml")
     out_path = Path(".profyl/daemon_out.log")
     err_path = Path(".profyl/daemon_err.log")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     err_path.parent.mkdir(parents=True, exist_ok=True)
     popen_kwargs = {
-        "args": [sys.executable, "-u", "-m", "profyl.daemon", f"{host}", f"{port}"],
+        "args": [sys.executable, "-u", "-m", "profyl.daemon", f"{host}", f"{port}", f"{namespacing}", "None"],
         "stdin": subprocess.DEVNULL,
         "stdout": open(out_path, 'w'),
         "stderr": open(err_path, 'w'),
         "close_fds": True
     }
+    if auth:
+        secret_key = os.getenv("SECRET_KEY")
+        if secret_key is not None:
+            popen_kwargs["args"][-1] = secret_key
+        else:
+            raise ctx.fail("--auth turned on, but JWT secret key not found in environment variable 'SECRET_KEY'")
     
     if sys.platform == "win32":
         popen_kwargs.update({ "creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW })
         
     else:
         popen_kwargs.update({ "start_new_session": True })
+    
+    with open(info_path, 'w') as f:
+        print(
+f'''[profyl-scoped]
+host = "{host}"
+port = {port}
+namespacing = {str(namespacing).lower()}
+auth = {str(auth).lower()}''', file=f)
     
     subprocess.Popen(**popen_kwargs)
 
@@ -43,28 +67,56 @@ def init(
     ctx: typer.Context,
     registry: Annotated[RegistryType, typer.Argument(help="Registry type", case_sensitive=False)],
     cache: Annotated[CacheType, typer.Argument(help="Cache type", case_sensitive=False)],
-    auth: bool = typer.Option(False, "--auth", help="Enable authentication"),
-    namespacing: bool = typer.Option(False, "--namespacing", help="Enable project namespacing"),
-    project: Annotated[str | None, typer.Option("--project", help="Project name (required if namespacing is on)")] = None,
-    authz: bool = typer.Option(False, "--authz", help="Enable authorization (requires namespacing to be on)")
+    project: Annotated[str, typer.Option("--project", help="Project name (required if namespacing is enabled)")] = "Namespacing not enabled",
+    authz: bool = typer.Option(False, "--authz", help="Enable authorization (requires namespacing enabled)")
 ):
-    if namespacing and not project:
-        raise ctx.fail("The --project flag must be used if --namespacing is turned on")
+    with open(".profyl/config.toml", "rb") as f:
+        data = tomllib.load(f)
+    
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+        
+    if namespacing and project == "Namespacing not enabled":
+        raise ctx.fail("The --project flag must be used if namespacing is enabled")
     
     if authz and not auth:
-        raise ctx.fail("The --auth flag must be used if --authz is turned on")
+        raise ctx.fail("The auth must be enabled if --authz is enabled")
     
     if not namespacing:
-        if project and authz:
-            raise ctx.fail("Neither the --project nor the --authz flags can be used without --namespacing turned on")
-        if project:
-            raise ctx.fail("The --project flag cannot be used without --namespacing turned on")
+        if project != "Namespacing not enabled" and authz:
+            raise ctx.fail("Neither the --project nor the --authz flags can be used without namespacing enabled")
+        if project != "Namespacing not enabled":
+            raise ctx.fail("The --project flag cannot be used without namespacing enabled")
         if authz:
-            raise ctx.fail("The --authz flag cannot be used without --namespacing turned on")
+            raise ctx.fail("The --authz flag cannot be used without namespacing enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if found:
+                raise ProjectError(f"Project already exists: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    # Allow users to change Registry and Cache from config as well, but unnecessary complexity right now
+    with open(".profyl/config.toml", 'a') as f:
+        print(
+f'''
+[[project]]
+name = "{project}"
+authz = {str(authz).lower()}''', file=f)
     
     command = InitCommand(registry, cache, auth, namespacing, project, authz)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
 
 @cli.command()
 def register(
@@ -72,55 +124,204 @@ def register(
     key: Annotated[str, typer.Argument(help="Dataset identifier")],
     source: Annotated[DataSourceType, typer.Argument(help="DataSource type", case_sensitive=False)],
     reference: Annotated[str, typer.Argument(help="String to access DataSource")],
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled")] = "Namespacing not enabled"
 ):
-    command = RegisterDatasetCommand("Namespacing not active", key, source, reference)
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+    
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+        data["project"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "Namespacing not enabled":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if found:
+                raise ProjectError(f"Project already exists: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+        
+    command = RegisterDatasetCommand(project, key, source, reference)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
     
 @cli.command()
 def load(
-    key: Annotated[str, typer.Argument(help="Identifier for dataset")]
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Identifier for dataset")],
+    project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled)")] = "Namespacing not enabled"
 ):
-    command = LoadDatasetCommand("test project", key)
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+    
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "Namespacing not enabled":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if not found:
+                raise ProjectError(f"Project doesn't exist: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+        
+    command = LoadDatasetCommand(project, key)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
 
 @cli.command()
 def remove(
-    key: Annotated[str, typer.Argument(help="Identifier for dataset")]
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Identifier for dataset")],
+    project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled)")] = "Namespacing not enabled"
 ):
-    command = RemoveDatasetCommand("test project", key)
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+    
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "Namespacing not enabled":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if not found:
+                raise ProjectError(f"Project doesn't exist: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+                
+    command = RemoveDatasetCommand(project, key)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
 
 @cli.command()
 def list(
-    key: str = typer.Option("All projects", "--project", help="Project to list datasets for")
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    ctx: typer.Context,
+    project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "All projects"
 ):
-   command = ListDatasetsCommand(key)
-   data = pickle.dumps(command)
-   connect("localhost", 8000, data)
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+        
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "All projects":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if not found:
+                raise ProjectError(f"Project doesn't exist: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+        
+    command = ListDatasetsCommand(project)
+    data = pickle.dumps(command)
+    connect(host, port, data)
 
 @cli.command()
 def start_mcp(
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    ctx: typer.Context,
+    project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "Namespacing not enabled"
 ):
-    command = StartMCPCommand("test project")
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+        
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "All projects":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if not found:
+                raise ProjectError(f"Project doesn't exist: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    command = StartMCPCommand(project)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
 
 @cli.command()
 def schema_map(
-    num_samples: int = typer.Option(25, help="Number of samples from each dataset")
-    # Add project param here once I add persistent state through file and check if namespacing is on
+    ctx: typer.Context,
+    num_samples: int = typer.Option(25, help="Number of samples from each dataset"),
+    project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "Namespacing not enabled"
 ):
-    command = SchemaMapCommand("test project", num_samples)
+    with open(".profyl/config.toml", 'rb') as f:
+        data = tomllib.load(f)
+        
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+        namespacing = data["profyl-scoped"]["namespacing"]
+    except KeyError as e:
+        raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
+    
+    if not namespacing and project != "All projects":
+        raise ctx.fail("--project flag used when namespacing is not enabled")
+    
+    if namespacing:
+        for proj in data["project"]:
+            found = proj.get("name") == project
+            if not found:
+                raise ProjectError(f"Project doesn't exist: {project}")
+    else:
+        if len(data["project"]) > 1:
+            raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
+        elif data["project"][0] != "Namespacing not enabled":
+            raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    command = SchemaMapCommand(project, num_samples)
     data = pickle.dumps(command)
-    connect("localhost", 8000, data)
+    connect(host, port, data)
 
 def connect(host: str, port: int, data: bytes):
     with socket.create_connection((host, port)) as s:
