@@ -51,6 +51,9 @@ def init(
     if namespacing and not project:
         raise ctx.fail("The --project flag must be used if --namespacing is turned on")
     
+    if authz and not auth:
+        raise ctx.fail("The --auth flag must be used if --authz is turned on")
+    
     if not namespacing:
         if project and authz:
             raise ctx.fail("Neither the --project nor the --authz flags can be used without --namespacing turned on")

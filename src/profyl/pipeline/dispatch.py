@@ -9,7 +9,7 @@ from profyl.pipeline.authentication import check_auth
 from profyl.pipeline.authorization import check_authz
 from profyl.pipeline.project_scope import find_project
 
-def dispatch_command(projects: list[dict], command: Any, buffer: bytearray):
+def dispatch_command(projects: dict[dict], command: Any, buffer: bytearray):
     if isinstance(command, InitCommand):
         handle_init(projects, command, buffer)
         
@@ -42,7 +42,7 @@ def run_pipeline(auth: bool, authz: bool):
         username = ""
         check_authz(username)
 
-def handle_init(projects: list[dict], init: InitCommand, buffer: bytearray):
+def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
     registry_type = init.registry
     match registry_type:
         case RegistryType.Dict:
@@ -60,7 +60,6 @@ def handle_init(projects: list[dict], init: InitCommand, buffer: bytearray):
     manager = Manager(registry, cache)
     
     dict_to_insert = {
-        "name": "",
         "manager": manager,
         "namespacing": namespacing,
         "auth": auth,
@@ -74,13 +73,11 @@ def handle_init(projects: list[dict], init: InitCommand, buffer: bytearray):
             buffer.extend(error)
             return
             
-        dict_to_insert["name"] = project_name
-        projects.append(dict_to_insert)
+        projects[project_name] = dict_to_insert
         
     else:
         if len(projects) == 0:
-            dict_to_insert["name"] = "Namespacing not active"
-            projects.append(dict_to_insert)
+            projects["Namespacing not active"] = dict_to_insert
         else:
             # Will have to create some kind of modify operation for this to work
             error = "[profyl] ERROR: A project already exists, for more, turn on namespacing".encode("utf-8")
@@ -91,7 +88,7 @@ def handle_init(projects: list[dict], init: InitCommand, buffer: bytearray):
     buffer.extend(message)
     
 
-def handle_register(projects: list[dict], register: RegisterDatasetCommand, buffer: bytearray):
+def handle_register(projects: dict[dict], register: RegisterDatasetCommand, buffer: bytearray):
     key = register.key
     source = register.source
     reference = register.reference
@@ -106,11 +103,11 @@ def handle_register(projects: list[dict], register: RegisterDatasetCommand, buff
     manager: Manager = project["manager"]
     manager.register_dataset(key, source, reference)
     
-    message = f"[profyl] SUCCESS: Project '{project_name}' registered successfully"
+    message = f"[profyl] SUCCESS: Project '{project_name}' registered successfully".encode("utf-8")
     buffer.extend(message)
     return
 
-def handle_load(projects: list[dict], load: LoadDatasetCommand, buffer: bytearray):
+def handle_load(projects: dict[dict], load: LoadDatasetCommand, buffer: bytearray):
     key = load.key
     project_name = load.project
     
@@ -126,7 +123,7 @@ def handle_load(projects: list[dict], load: LoadDatasetCommand, buffer: bytearra
     message = f"[profyl] SUCCESS: Project '{project_name}' loaded to cache successfully".encode("utf-8")
     buffer.extend(message)
 
-def handle_remove(projects: list[dict], remove: RemoveDatasetCommand, buffer: bytearray):
+def handle_remove(projects: dict[dict], remove: RemoveDatasetCommand, buffer: bytearray):
     key = remove.key
     project_name = remove.project
     
@@ -139,15 +136,15 @@ def handle_remove(projects: list[dict], remove: RemoveDatasetCommand, buffer: by
     manager: Manager = project["manager"]
     manager.remove_dataset(key)
     
-    message = f"[profyl] SUCCESS: Project '{project_name}' removed successfully"
+    message = f"[profyl] SUCCESS: Project '{project_name}' removed successfully".encode("utf-8")
     buffer.extend(message)
     
-def handle_list(projects: list[dict], list: ListDatasetsCommand, buffer: bytearray):
+def handle_list(projects: dict[dict], list: ListDatasetsCommand, buffer: bytearray):
     project_name = list.project
     if project_name == "All projects":
-        for proj in projects:
-            name = f"Project name: {proj["name"]}"
-            manager: Manager = proj["manager"]
+        for name, details in projects:
+            name = f"Project name: {name}"
+            manager: Manager = details["manager"]
             # Make list_datasets return an array of strings instead of printing
             manager.list_datasets()
     else:
@@ -158,10 +155,10 @@ def handle_list(projects: list[dict], list: ListDatasetsCommand, buffer: bytearr
             return
         
         # Make list_datasets return an array of strings instead of printing
-        manager: Manager = proj["manager"]
+        manager: Manager = project["manager"]
         manager.list_datasets()
 
-def handle_start_mcp(projects: list[dict], start_mcp: StartMCPCommand, buffer: bytearray):
+def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, buffer: bytearray):
     project_name = start_mcp.project
     
     project = find_project(projects, project_name)
@@ -176,7 +173,7 @@ def handle_start_mcp(projects: list[dict], start_mcp: StartMCPCommand, buffer: b
     message = "[profyl] SUCCESS: MCP server started successfully".encode("utf-8")
     buffer.extend(message)
 
-def handle_schema_map(projects: list[dict], schema_map: SchemaMapCommand, buffer: bytearray):
+def handle_schema_map(projects: dict[dict], schema_map: SchemaMapCommand, buffer: bytearray):
     # THIS IS WRONG, HAVE TO FIGURE OUT HOW TO CAUSE THE AI TO PROMPT BY CALLING THE METHOD IN .start_mcp()
     num_samples = schema_map.num_samples
     project_name = schema_map.project
