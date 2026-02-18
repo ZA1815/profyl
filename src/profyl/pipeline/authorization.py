@@ -1,2 +1,2 @@
-def check_authz(username: str):
+def check_authz(user_id: int):
     pass

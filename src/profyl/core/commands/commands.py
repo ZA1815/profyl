@@ -4,49 +4,40 @@ from profyl.core.abstractions.registry import DataSourceType, RegistryType
 
 @dataclass
 class AuthenticationMixin:
-    # Fill this in later
-    pass
-    
-@dataclass
-class AuthorizationMixin:
-    # Fill this in later
-    pass
+    token: str | None
     
 @dataclass
 class ProjectMixin:
     project: str
 
 @dataclass
-class InitCommand():
+class InitCommand(AuthenticationMixin, ProjectMixin):
     registry: RegistryType
     cache: CacheType
-    auth: bool
-    namespacing: bool
-    project: str | None
     authz: bool
 
 @dataclass
-class RegisterDatasetCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class RegisterDatasetCommand(AuthenticationMixin, ProjectMixin):
     key: str
     source: DataSourceType
     reference: str
     
 @dataclass
-class LoadDatasetCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class LoadDatasetCommand(AuthenticationMixin, ProjectMixin):
     key: str
     
 @dataclass
-class RemoveDatasetCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class RemoveDatasetCommand(AuthenticationMixin, ProjectMixin):
     key: str
 
 @dataclass
-class ListDatasetsCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class ListDatasetsCommand(AuthenticationMixin, ProjectMixin):
     pass
 
 @dataclass
-class StartMCPCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class StartMCPCommand(AuthenticationMixin, ProjectMixin):
     pass
     
 @dataclass
-class SchemaMapCommand(AuthenticationMixin, AuthorizationMixin, ProjectMixin):
+class SchemaMapCommand(AuthenticationMixin, ProjectMixin):
     num_samples: int

@@ -10,7 +10,7 @@ import sys
 import os
 import tomllib
 from pathlib import Path
-from profyl.adapters.error import ConfigError, ProjectError
+from profyl.adapters.error import AuthError, ConfigError, ProjectError
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
 from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, SchemaMapCommand, StartMCPCommand
@@ -106,6 +106,13 @@ def init(
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
     
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
+    
     # Allow users to change Registry and Cache from config as well, but unnecessary complexity right now
     with open(".profyl/config.toml", 'a') as f:
         print(
@@ -114,7 +121,7 @@ f'''
 name = "{project}"
 authz = {str(authz).lower()}''', file=f)
     
-    command = InitCommand(registry, cache, auth, namespacing, project, authz)
+    command = InitCommand(project=project, token=token, registry=registry, cache=cache, authz=authz)
     data = pickle.dumps(command)
     connect(host, port, data)
 
@@ -133,6 +140,7 @@ def register(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
         data["project"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
@@ -150,8 +158,15 @@ def register(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
         
-    command = RegisterDatasetCommand(project, key, source, reference)
+    command = RegisterDatasetCommand(project=project, token=token, key=key, source=source, reference=reference)
     data = pickle.dumps(command)
     connect(host, port, data)
     
@@ -168,6 +183,7 @@ def load(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
     
@@ -184,8 +200,15 @@ def load(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
         
-    command = LoadDatasetCommand(project, key)
+    command = LoadDatasetCommand(project=project, token=token, key=key)
     data = pickle.dumps(command)
     connect(host, port, data)
 
@@ -202,6 +225,7 @@ def remove(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
     
@@ -218,6 +242,13 @@ def remove(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
                 
     command = RemoveDatasetCommand(project, key)
     data = pickle.dumps(command)
@@ -235,6 +266,7 @@ def list(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
     
@@ -251,6 +283,13 @@ def list(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
         
     command = ListDatasetsCommand(project)
     data = pickle.dumps(command)
@@ -268,6 +307,7 @@ def start_mcp(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
     
@@ -284,6 +324,13 @@ def start_mcp(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
     
     command = StartMCPCommand(project)
     data = pickle.dumps(command)
@@ -302,6 +349,7 @@ def schema_map(
         host = data["profyl-scoped"]["host"]
         port = data["profyl-scoped"]["port"]
         namespacing = data["profyl-scoped"]["namespacing"]
+        auth = data["profyl-scoped"]["auth"]
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/config.toml: {e}")
     
@@ -318,6 +366,13 @@ def schema_map(
             raise ConfigError("Number of projects cannot be greater than 1 if namespacing is not enabled")
         elif data["project"][0] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
+    
+    if auth:
+        token = os.getenv("USER_TOKEN")
+        if token is None:
+            raise AuthError("Auth enabled, but USER_TOKEN not found")
+    else:
+        token = None
     
     command = SchemaMapCommand(project, num_samples)
     data = pickle.dumps(command)

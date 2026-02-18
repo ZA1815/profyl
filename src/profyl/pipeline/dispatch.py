@@ -53,17 +53,18 @@ def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
         case CacheType.Redis:
             cache = RedisCache()
     
-    auth = init.auth
+    # ADD AUTH HERE BY TAKING IN PARAMETER, SAME WITH NAMESPACING
+    
     namespacing = init.namespacing
     project_name = init.project
     authz = init.authz
     manager = Manager(registry, cache)
+    if auth:
+        check_auth()
     
     dict_to_insert = {
         "manager": manager,
-        "namespacing": namespacing,
-        "auth": auth,
-        "authz": authz
+        "allowed-users": []
     }
     if namespacing:
         found = find_project(projects, project_name)

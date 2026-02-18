@@ -3,3 +3,6 @@ class ConfigError(Exception):
     
 class ProjectError(Exception):
     pass
+
+class AuthError(Exception):
+    pass
