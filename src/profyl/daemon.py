@@ -3,7 +3,7 @@ from asyncio import StreamReader, StreamWriter
 import pickle
 import struct
 from sys import argv
-from profyl.pipeline.dispatch import dispatch_command
+from profyl.pipeline import dispatch_command
 
 class Daemon:
     def __init__(self, namespacing: bool, secret_key: str | None) -> None:
@@ -22,12 +22,12 @@ class Daemon:
         bytes = await reader.readexactly(length)
         command = pickle.loads(bytes)
         buffer = bytearray()
-        dispatch_command(self.projects, command, buffer)
+        dispatch_command(self, command, buffer)
         writer.write(buffer)
         await writer.drain()
     
 async def main(argv: list[str]):
-    daemon = Daemon(argv[3], argv[4])
+    daemon = Daemon(bool(argv[3]), argv[4])
     await daemon.run(argv[1], int(argv[2]))
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from profyl.core.abstractions.registry import DataSourceType, RegistryType
 @dataclass
 class AuthenticationMixin:
     token: str | None
-    
+
 @dataclass
 class ProjectMixin:
     project: str
@@ -15,6 +15,7 @@ class InitCommand(AuthenticationMixin, ProjectMixin):
     registry: RegistryType
     cache: CacheType
     authz: bool
+    allowed_users: list[int]
 
 @dataclass
 class RegisterDatasetCommand(AuthenticationMixin, ProjectMixin):

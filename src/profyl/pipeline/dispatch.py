@@ -9,40 +9,47 @@ from profyl.pipeline.authentication import check_auth
 from profyl.pipeline.authorization import check_authz
 from profyl.pipeline.project_scope import find_project
 
-def dispatch_command(projects: dict[dict], command: Any, buffer: bytearray):
+def dispatch_command(daemon, command: Any, buffer: bytearray):
     if isinstance(command, InitCommand):
-        handle_init(projects, command, buffer)
+        handle_init(daemon=daemon, init=command, buffer=buffer)
         
     elif isinstance(command, RegisterDatasetCommand):
-        handle_register(projects, command, buffer)
+        handle_register(projects=daemon.projects, register=command, secret_key=daemon.secret_key, buffer=buffer)
         
     elif isinstance(command, LoadDatasetCommand):
-        handle_load(projects, command, buffer)
+        handle_load(projects=daemon.projects, load=command, secret_key=daemon.secret_key, buffer=buffer)
         
     elif isinstance(command, RemoveDatasetCommand):
-        handle_remove(projects, command, buffer)
+        handle_remove(projects=daemon.projects, remove=command, secret_key=daemon.secret_key, buffer=buffer)
         
     elif isinstance(command, ListDatasetsCommand):
-        handle_list(projects, command, buffer)
+        handle_list(projects=daemon.projects, list=command, secret_key=daemon.secret_key, buffer=buffer)
         
     elif isinstance(command, StartMCPCommand):
-        handle_start_mcp(projects, command, buffer)
+        handle_start_mcp(projects=daemon.projects, start_mcp=command, secret_key=daemon.secret_key, buffer=buffer)
         
     elif isinstance(command, SchemaMapCommand):
-        handle_schema_map(projects, command, buffer)
-    
-def run_pipeline(auth: bool, authz: bool):
-    if auth:
-        # Figure out best way to get API_KEY, maybe ENV var?
-        api_key = ""
-        check_auth(api_key)
-        
-    if authz:
-        # Figure out best way to get username, probably stored with project right?
-        username = ""
-        check_authz(username)
+        handle_schema_map(projects=daemon.projects, schema_map=command, secret_key=daemon.secret_key, buffer=buffer)
 
-def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
+def run_pipeline(token: str | None, secret_key: str | None, projects: dict[dict], project_name: str, buffer: bytearray) -> dict | None:
+    if secret_key != "None":
+        user_id = check_auth(token=token, secret_key=secret_key, buffer=buffer)
+        if user_id == -1:
+            return None
+        
+    project = find_project(projects, project_name)
+    if project is None:
+        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
+        buffer.extend(error)
+        return None
+        
+    if project["authz"]:
+        if not check_authz(user_id=user_id, allowed_users=project["allowed_users"], buffer=buffer):
+            return None
+    
+    return project
+    
+def handle_init(daemon, init: InitCommand, buffer: bytearray):
     registry_type = init.registry
     match registry_type:
         case RegistryType.Dict:
@@ -53,32 +60,35 @@ def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
         case CacheType.Redis:
             cache = RedisCache()
     
-    # ADD AUTH HERE BY TAKING IN PARAMETER, SAME WITH NAMESPACING
+    token = init.token
+    if daemon.secret_key != "None":
+        if check_auth(token=token, secret_key=daemon.secret_key, buffer=buffer) == -1:
+            return
     
-    namespacing = init.namespacing
     project_name = init.project
-    authz = init.authz
     manager = Manager(registry, cache)
-    if auth:
-        check_auth()
     
     dict_to_insert = {
         "manager": manager,
-        "allowed-users": []
+        "authz": False
     }
-    if namespacing:
-        found = find_project(projects, project_name)
+    
+    if init.authz:
+        dict_to_insert["authz"] = True
+        dict_to_insert["allowed_users"] = init.allowed_users
+    
+    if daemon.namespacing:
+        found = find_project(daemon.projects, project_name)
         if found is not None:
-            # Error here because project with name already exists
             error = f"[profyl] ERROR: Project with name '{project_name}' already exists".encode("utf-8")
             buffer.extend(error)
             return
             
-        projects[project_name] = dict_to_insert
+        daemon.projects[project_name] = dict_to_insert
         
     else:
-        if len(projects) == 0:
-            projects["Namespacing not enabled"] = dict_to_insert
+        if len(daemon.projects) == 0:
+            daemon.projects["Namespacing not enabled"] = dict_to_insert
         else:
             # Will have to create some kind of modify operation for this to work (file watcher)
             error = "[profyl] ERROR: A project already exists, for more, turn on namespacing".encode("utf-8")
@@ -89,18 +99,17 @@ def handle_init(projects: dict[dict], init: InitCommand, buffer: bytearray):
     buffer.extend(message)
     
 
-def handle_register(projects: dict[dict], register: RegisterDatasetCommand, buffer: bytearray):
+def handle_register(projects: dict[dict], register: RegisterDatasetCommand, secret_key: str | None, buffer: bytearray):
     key = register.key
     source = register.source
     reference = register.reference
     project_name = register.project
+    token = register.token
     
-    project = find_project(projects, project_name)
+    project = run_pipeline(token=token, secret_key=secret_key, projects=projects, project_name=project_name, buffer=buffer)
     if project is None:
-        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
-        buffer.extend(error)
         return
-    
+       
     manager: Manager = project["manager"]
     manager.register_dataset(key, source, reference)
     
@@ -108,15 +117,14 @@ def handle_register(projects: dict[dict], register: RegisterDatasetCommand, buff
     buffer.extend(message)
     return
 
-def handle_load(projects: dict[dict], load: LoadDatasetCommand, buffer: bytearray):
+def handle_load(projects: dict[dict], load: LoadDatasetCommand, secret_key: str | None, buffer: bytearray):
     key = load.key
     project_name = load.project
+    token = load.token
     
-    project = find_project(projects, project_name)
+    project = run_pipeline(token=token, secret_key=secret_key, projects=projects, project_name=project_name, buffer=buffer)
     if project is None:
-        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
-        buffer.extend(error)
-        return 
+        return
             
     manager: Manager = project["manager"]
     manager.load_dataset(key)
@@ -124,28 +132,34 @@ def handle_load(projects: dict[dict], load: LoadDatasetCommand, buffer: bytearra
     message = f"[profyl] SUCCESS: Project '{project_name}' loaded to cache successfully".encode("utf-8")
     buffer.extend(message)
 
-def handle_remove(projects: dict[dict], remove: RemoveDatasetCommand, buffer: bytearray):
+def handle_remove(projects: dict[dict], remove: RemoveDatasetCommand, secret_key: str | None, buffer: bytearray):
     key = remove.key
     project_name = remove.project
+    token = remove.token
     
-    project = find_project(projects, project_name)
+    project = run_pipeline(token=token, secret_key=secret_key, projects=projects, project_name=project_name, buffer=buffer)
     if project is None:
-        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
-        buffer.extend(error)
-        return 
-    
+        return
+                 
     manager: Manager = project["manager"]
     manager.remove_dataset(key)
     
     message = f"[profyl] SUCCESS: Project '{project_name}' removed successfully".encode("utf-8")
     buffer.extend(message)
     
-def handle_list(projects: dict[dict], list: ListDatasetsCommand, buffer: bytearray):
+def handle_list(projects: dict[dict], list: ListDatasetsCommand, secret_key: str | None, buffer: bytearray):
+    token = list.token
+    if secret_key != "None":
+        user_id = check_auth(token=token, secret_key=secret_key, buffer=buffer)
+        
     project_name = list.project
     if project_name == "All projects":
-        for name, details in projects:
+        for name, details in projects.items():
             name = f"Project name: {name}"
             manager: Manager = details["manager"]
+            if details["authz"]:
+                if not check_authz(user_id=user_id, allowed_users=details["allowed_users"], buffer=buffer):
+                    return
             # Make list_datasets return an array of strings instead of printing
             manager.list_datasets()
     else:
@@ -154,18 +168,21 @@ def handle_list(projects: dict[dict], list: ListDatasetsCommand, buffer: bytearr
             error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
             buffer.extend(error)
             return
+            
+        if project["authz"]:
+            if not check_authz(user_id=user_id, allowed_users=project["allowed_users"], buffer=buffer):
+                return
         
         # Make list_datasets return an array of strings instead of printing
         manager: Manager = project["manager"]
         manager.list_datasets()
 
-def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, buffer: bytearray):
+def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, secret_key: str | None, buffer: bytearray):
     project_name = start_mcp.project
+    token = start_mcp.token
     
-    project = find_project(projects, project_name)
+    project = run_pipeline(token=token, secret_key=secret_key, projects=projects, project_name=project_name, buffer=buffer)
     if project is None:
-        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
-        buffer.extend(error)
         return
         
     manager: Manager = project["manager"]
@@ -174,15 +191,14 @@ def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, buffer: b
     message = "[profyl] SUCCESS: MCP server started successfully".encode("utf-8")
     buffer.extend(message)
 
-def handle_schema_map(projects: dict[dict], schema_map: SchemaMapCommand, buffer: bytearray):
+def handle_schema_map(projects: dict[dict], schema_map: SchemaMapCommand, secret_key: str | None, buffer: bytearray):
     # THIS IS WRONG, HAVE TO FIGURE OUT HOW TO CAUSE THE AI TO PROMPT BY CALLING THE METHOD IN .start_mcp()
     num_samples = schema_map.num_samples
     project_name = schema_map.project
+    token = schema_map.token
     
-    project = find_project(projects, project_name)
+    project = run_pipeline(token=token, secret_key=secret_key, projects=projects, project_name=project_name, buffer=buffer)
     if project is None:
-        error = f"[profyl] ERROR: Could not find project with name: {project_name}".encode("utf-8")
-        buffer.extend(error)
         return
     
     manager: Manager = project["manager"]
