@@ -1,1 +1,1 @@
-from .error import ConfigError, ProjectError
+from .error import ConfigError, ProjectError, AuthError, HttpError, CliError, PayloadError
