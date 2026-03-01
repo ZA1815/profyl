@@ -1,15 +1,17 @@
+from json.decoder import JSONDecodeError
 from sys import argv
 from typing import Any
 from aiohttp import web
 from profyl.adapters.utils import init_util, list_util, load_util, register_util, remove_util, schema_map_util, start_mcp_util
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
-from profyl.error import PayloadError
+from profyl.error import AuthError, ConfigError, PayloadError, ProjectError
 
 async def init(request: web.Request):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
         
     registry: Any | None = body.get("registry")
     if not isinstance(registry, str):
@@ -47,16 +49,28 @@ async def init(request: web.Request):
     if allowed_users is None:
         allowed_users = []
     else:
-        if not isinstance(allowed_users, list[int]):
+        if not isinstance(allowed_users, list) and all(isinstance(x, int) for x in allowed_users):
             return web.Response(text="[profyl] ERROR: allowedUsers must be a list[int]", status=422)
             
-    init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users)
+    try:
+        init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users)
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' created", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401)
+        
     
 async def register(request: web.Request):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
-    
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+        
     key: Any | None = body.get("key")
     if not isinstance(key, str):
         return web.Response(text="[profyl] ERROR: key is a required field and must be a string", status=422)
@@ -84,12 +98,23 @@ async def register(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
-    register_util(key=key, source=source, reference=reference, project=project)
+    try:
+        register_util(key=key, source=source, reference=reference, project=project)
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' registered", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
     
 async def load(request: web.Request):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
     
     key: Any | None = body.get("key")
     if not isinstance(key, str):
@@ -102,12 +127,23 @@ async def load(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
             
-    load_util(key=key, project=project)
+    try:
+        load_util(key=key, project=project)
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' loaded", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
 
 async def remove(request: web.Request):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
         
     key: Any | None = body.get("key")
     if not isinstance(key, str):
@@ -120,12 +156,23 @@ async def remove(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
-    remove_util(key=key, project=project)
+    try:
+        remove_util(key=key, project=project)
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' removed", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
 
 async def list_datasets(request: web.Request):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
      
     project: Any | None = body.get("project")
     if project is None:
@@ -134,14 +181,24 @@ async def list_datasets(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
-    list_util(project=project)
+    try:
+        list_util(project=project)
+        # Fix this
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' created", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
 
-async def start_mcp(
-    request: web.Request,
-):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+async def start_mcp(request: web.Request):
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
     
     project: Any | None = body.get("project")
     if project is None:
@@ -150,18 +207,27 @@ async def start_mcp(
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
-    start_mcp_util(project=project)
+    try:
+        start_mcp_util(project=project)
+        return web.Response(text=f"[profyl] SUCCESS: MCP server started for '{project}'", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
 
-async def schema_map(
-    request: web.Request,
-):
-    body = await request.json()
-    if not isinstance(body, dict):
-        return web.Response(text="[profyl] ERROR: Command payload is supposed to be an object", status=422)
+async def schema_map(request: web.Request):
+    try:
+        body = await recv_body(request)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
     
     num_samples: Any | None = body.get("num_samples")
     if num_samples is None:
-        num_samples = "Namespacing not enabled"
+        num_samples = 25
     else:
         if not isinstance(num_samples, int):
             return web.Response(text="[profyl] ERROR: num_samples must be an int", status=422)
@@ -173,7 +239,28 @@ async def schema_map(
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
             
-    schema_map_util(num_samples=num_samples, project=project)
+    try:
+        schema_map_util(num_samples=num_samples, project=project)
+        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' schema mapped", status=200)
+    except ConfigError as e:
+        return web.Response(text=str(e), status=422)
+    except PayloadError as e:
+        return web.Response(text=str(e), status=422)
+    except ProjectError as e:
+        return web.Response(text=str(e), status=409)
+    except AuthError as e:
+        return web.Response(text=str(e), status=401) 
+
+async def recv_body(request: web.Request) -> dict:
+    try:
+        body = await request.json()
+    except JSONDecodeError as e:
+        raise PayloadError(f"[profyl] ERROR: {str(e)}")
+        
+    if not isinstance(body, dict):
+        raise PayloadError("[profyl] ERROR: Command payload is supposed to be an object")
+    
+    return body
 
 server = web.Application()
 server.add_routes([
@@ -181,7 +268,7 @@ server.add_routes([
     web.post("/register", register),
     web.post("/load", load),
     web.post("/remove", remove),
-    web.post("/list", list),
+    web.post("/list", list_datasets),
     web.post("/start-mcp", start_mcp),
     web.post("/schema-map", schema_map)
 ])
