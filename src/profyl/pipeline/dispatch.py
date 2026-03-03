@@ -160,8 +160,10 @@ def handle_list(projects: dict[dict], list: ListDatasetsCommand, secret_key: str
             if details["authz"]:
                 if not check_authz(user_id=user_id, allowed_users=details["allowed_users"], buffer=buffer):
                     return
-            # Make list_datasets return an array of strings instead of printing
-            manager.list_datasets()
+                    
+            datasets = manager.list_datasets()
+            for line in datasets:
+                buffer.extend(line)
     else:
         project = find_project(projects, project_name)
         if project is None:
@@ -173,10 +175,11 @@ def handle_list(projects: dict[dict], list: ListDatasetsCommand, secret_key: str
             if not check_authz(user_id=user_id, allowed_users=project["allowed_users"], buffer=buffer):
                 return
         
-        # Make list_datasets return an array of strings instead of printing
         manager: Manager = project["manager"]
-        manager.list_datasets()
-
+        datasets = manager.list_datasets()
+        for line in datasets:
+            buffer.extend(line)
+            
 def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, secret_key: str | None, buffer: bytearray):
     project_name = start_mcp.project
     token = start_mcp.token

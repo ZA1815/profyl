@@ -5,6 +5,9 @@ from pymongo import MongoClient, ReplaceOne
 import os
 
 class MongoDBDataSource(DataSource):
+    def __str__(self) -> str:
+        return "MongoDB"
+    
     def __init__(self, collection_name: str = "datasets") -> None:
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/test")
         try:

@@ -5,6 +5,9 @@ import pandas as pd
 from profyl.core.abstractions.data_source import SheetData
 
 class ExcelDataSource(DataSource):
+    def __str__(self) -> str:
+        return "Excel"
+    
     def __init__(self) -> None:
         self.data: dict[str, pd.DataFrame] = {}
         self.sheet_names = []

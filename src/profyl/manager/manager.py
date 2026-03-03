@@ -30,15 +30,17 @@ class Manager:
         self.cache.remove_dataset(entry.source_num)
         self.reg.remove(key)
     
-    def list_datasets(self):
+    def list_datasets(self) -> list[str]:
         entries = self.reg.get_all()
+        datasets = []
         for key, entry in entries:
-            print(f"Dataset '{key}':")
-            print(f"Source: {entry.source}")
-            print(f"Reference: {entry.reference}")
-            print(f"Timestamp: {entry.timestamp}")
-            print(f"Status: {entry.status}")
-            print("")
+            datasets.append(f"Dataset '{key}':\n".encode("utf-8"))
+            datasets.append(f"Source: {str(entry.source)}\n".encode("utf-8"))
+            datasets.append(f"Reference: {entry.reference}\n".encode("utf-8"))
+            datasets.append(f"Timestamp: {entry.timestamp}\n".encode("utf-8"))
+            datasets.append(f"Status: {entry.status}\n".encode("utf-8"))
+            
+        return datasets
     
     def build_schema_map_payload(self, num_samples: int) -> str:
         schema_map_list = []
