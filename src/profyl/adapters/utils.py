@@ -175,10 +175,8 @@ def cmd_check(project: str) -> tuple[str, int, str]:
         raise PayloadError("Project name given when namespacing is not enabled")
     
     if namespacing:
-        for proj in data["project"]:
-            found = proj.get("name") == project
-            if not found:
-                raise ProjectError(f"Project doesn't exist: {project}")
+        if not any(proj.get("name") == project for proj in data["project"]):
+            raise ProjectError(f"Project doesn't exist: {project}")
     else:
         if data.get("project") is None:
             raise ProjectError("Number of projects has to be at least 1")
