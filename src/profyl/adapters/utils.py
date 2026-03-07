@@ -16,7 +16,8 @@ def init_util(
     cache: CacheType,
     project: str = "Namespacing not enabled",
     authz: bool = False,
-    allowed_users: list[int] = []
+    allowed_users: list[int] = [],
+    token: str | None = None
 ):
     with open(".profyl/daemon/config.toml", "rb") as f:
         data = tomllib.load(f)
@@ -55,12 +56,8 @@ def init_util(
             elif data["project"][0]["name"] != "Namespacing not enabled":
                 raise ProjectError("[profyl] ERROR: Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")    
         
-    if auth:
-        token = os.getenv("USER_TOKEN")
-        if token is None:
-            raise AuthError("[profyl] ERROR: Auth enabled, but USER_TOKEN not found")
-    else:
-        token = None
+    if auth and token is None:
+        raise AuthError("[profyl] ERROR: Auth enabled, but JWT token not found")
     
     # Allow users to change Registry and Cache from config as well, but unnecessary complexity right now
     with open(".profyl/daemon/config.toml", 'a') as f:
@@ -78,9 +75,10 @@ def register_util(
     key: str,
     source: DataSourceType,
     reference: str,
-    project: str = "Namespacing not enabled"
+    project: str = "Namespacing not enabled",
+    token: str | None = None
 ):
-    (host, port, token) = cmd_check(project)
+    (host, port) = cmd_check(project, token)
     
     command = RegisterDatasetCommand(project=project, token=token, key=key, source=source, reference=reference)
     data = pickle.dumps(command)
@@ -88,9 +86,10 @@ def register_util(
 
 def load_util(
     key: str,
-    project: str = "Namespacing not enabled"
+    project: str = "Namespacing not enabled",
+    token: str | None = None
 ):
-    (host, port, token) = cmd_check(project)
+    (host, port) = cmd_check(project, token)
         
     command = LoadDatasetCommand(project=project, token=token, key=key)
     data = pickle.dumps(command)
@@ -98,16 +97,18 @@ def load_util(
 
 def remove_util(
     key: str,
-    project: str = "Namespacing not enabled"
+    project: str = "Namespacing not enabled",
+    token: str | None = None
 ):
-    (host, port, token) = cmd_check(project)
+    (host, port) = cmd_check(project, token)
                 
     command = RemoveDatasetCommand(project=project, token=token, key=key)
     data = pickle.dumps(command)
     connect(host, port, data)
 
 def list_util(
-    project: str = "All projects"
+    project: str = "All projects",
+    token: str | None = None
 ) -> str:
     with open(".profyl/daemon/config.toml", 'rb') as f:
         data = tomllib.load(f)
@@ -120,12 +121,8 @@ def list_util(
     except KeyError as e:
         raise ConfigError(f"Missing table or key from .profyl/daemon/config.toml: {e}")
      
-    if auth:
-        token = os.getenv("USER_TOKEN")
-        if token is None:
-            raise AuthError("Auth enabled, but USER_TOKEN not found")
-    else:
-        token = None
+    if auth and token is None:
+        raise AuthError("Auth enabled, but JWT token not found")
         
     command = ListDatasetsCommand(project=project, token=token)
     data = pickle.dumps(command)
@@ -133,9 +130,10 @@ def list_util(
     return text
 
 def start_mcp_util(
-    project: str = "Namespacing not enabled"
+    project: str = "Namespacing not enabled",
+    token: str | None = None
 ):
-    (host, port, token) = cmd_check(project)
+    (host, port) = cmd_check(project, token)
     
     command = StartMCPCommand(project=project, token=token)
     data = pickle.dumps(command)
@@ -143,9 +141,10 @@ def start_mcp_util(
 
 def schema_map_util(
     num_samples: int = 25,
-    project: str = "Namespacing not enabled"
+    project: str = "Namespacing not enabled",
+    token: str | None = None
 ):
-    (host, port, token) = cmd_check(project)
+    (host, port) = cmd_check(project, token)
     
     command = SchemaMapCommand(project=project, token=token, num_samples=num_samples)
     data = pickle.dumps(command)
@@ -158,7 +157,7 @@ def add_sys_kwargs(dict: dict):
     else:
         dict.update({ "start_new_session": True })
 
-def cmd_check(project: str) -> tuple[str, int, str]:
+def cmd_check(project: str, token: str | None) -> tuple[str, int]:
     with open(".profyl/daemon/config.toml", 'rb') as f:
         data = tomllib.load(f)
     
@@ -185,14 +184,10 @@ def cmd_check(project: str) -> tuple[str, int, str]:
         elif data["project"][0]["name"] != "Namespacing not enabled":
             raise ProjectError("Name of project when namespacing is not enabled has to be 'Namespacing not enabled'")
     
-    if auth:
-        token = os.getenv("USER_TOKEN")
-        if token is None:
-            raise AuthError("Auth enabled, but USER_TOKEN not found")
-    else:
-        token = None
+    if auth and token is None:
+        raise AuthError("[profyl] ERROR: Auth enabled, but JWT token not found")
         
-    return (host, port, token)
+    return (host, port)
 
 def connect(host: str, port: int, data: bytes) -> str:
     with socket.create_connection((host, port)) as s:

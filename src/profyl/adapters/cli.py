@@ -120,7 +120,8 @@ def init(
     authz: bool = typer.Option(False, "--authz", help="Enable authorization (requires namespacing enabled)"),
     allowed_users: list[int] = typer.Option([], "--allowed-users", help="User IDs of allowed users for project (requires authz enabled)")
 ):
-    init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users)
+    token = os.getenv("USER_TOKEN")
+    init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users, token=token)
     
 @cli.command()
 def register(
@@ -129,40 +130,46 @@ def register(
     reference: Annotated[str, typer.Argument(help="String to access DataSource")],
     project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled")] = "Namespacing not enabled"
 ):
-    register_util(key=key, source=source, reference=reference, project=project)
+    token = os.getenv("USER_TOKEN")
+    register_util(key=key, source=source, reference=reference, project=project, token=token)
     
 @cli.command()
 def load(
     key: Annotated[str, typer.Argument(help="Identifier for dataset")],
     project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled)")] = "Namespacing not enabled"
 ):
-    load_util(key=key, project=project)
+    token = os.getenv("USER_TOKEN")
+    load_util(key=key, project=project, token=token)
 
 @cli.command()
 def remove(
     key: Annotated[str, typer.Argument(help="Identifier for dataset")],
     project: Annotated[str, typer.Option(help="Project name (only valid if namespacing is enabled)")] = "Namespacing not enabled"
 ):
-    remove_util(key=key, project=project)
+    token = os.getenv("USER_TOKEN")
+    remove_util(key=key, project=project, token=token)
 
 @cli.command()
 def list(
     project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "All projects"
 ):
-    list_util(project=project)
+    token = os.getenv("USER_TOKEN")
+    list_util(project=project, token=token)
 
 @cli.command()
 def start_mcp(
     project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "Namespacing not enabled"
 ):
-    start_mcp_util(project=project)
+    token = os.getenv("USER_TOKEN")
+    start_mcp_util(project=project, token=token)
 
 @cli.command()
 def schema_map(
     num_samples: int = typer.Option(25, help="Number of samples from each dataset"),
     project: Annotated[str, typer.Option("--project", help="Project to list datasets for")] = "Namespacing not enabled"
 ):
-    schema_map_util(num_samples=num_samples, project=project)
+    token = os.getenv("USER_TOKEN")
+    schema_map_util(num_samples=num_samples, project=project, token=token)
 
 if __name__ == "__main__":
     cli()

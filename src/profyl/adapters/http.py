@@ -51,9 +51,15 @@ async def init(request: web.Request):
     else:
         if not isinstance(allowed_users, list) and all(isinstance(x, int) for x in allowed_users):
             return web.Response(text="[profyl] ERROR: allowedUsers must be a list[int]", status=422)
-            
+    
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+        
     try:
-        init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users)
+        init_util(registry=registry, cache=cache, project=project, authz=authz, allowed_users=allowed_users, token=token)
         return web.Response(text=f"[profyl] SUCCESS: Project '{project}' created", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -63,7 +69,6 @@ async def init(request: web.Request):
         return web.Response(text=str(e), status=409)
     except AuthError as e:
         return web.Response(text=str(e), status=401)
-        
     
 async def register(request: web.Request):
     try:
@@ -98,8 +103,14 @@ async def register(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+    
     try:
-        register_util(key=key, source=source, reference=reference, project=project)
+        register_util(key=key, source=source, reference=reference, project=project, token=token)
         return web.Response(text=f"[profyl] SUCCESS: Project '{project}' registered", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -127,8 +138,14 @@ async def load(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
             
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+    
     try:
-        load_util(key=key, project=project)
+        load_util(key=key, project=project, token=token)
         return web.Response(text=f"[profyl] SUCCESS: Project '{project}' loaded", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -156,8 +173,14 @@ async def remove(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+    
     try:
-        remove_util(key=key, project=project)
+        remove_util(key=key, project=project, token=token)
         return web.Response(text=f"[profyl] SUCCESS: Project '{project}' removed", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -181,8 +204,14 @@ async def list_datasets(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+    
     try:
-        text = list_util(project=project)
+        text = list_util(project=project, token=token)
         return web.Response(text=text, status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -206,8 +235,14 @@ async def start_mcp(request: web.Request):
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
+    
     try:
-        start_mcp_util(project=project)
+        start_mcp_util(project=project, token=token)
         return web.Response(text=f"[profyl] SUCCESS: MCP server started for '{project}'", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
@@ -237,9 +272,15 @@ async def schema_map(request: web.Request):
     else:
         if not isinstance(project, str):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
+    
+    auth_header = request.headers.get("Authorization")
+    if auth_header is not None:
+        token = auth_header.removeprefix("Bearer ")
+    else:
+        token = None
             
     try:
-        schema_map_util(num_samples=num_samples, project=project)
+        schema_map_util(num_samples=num_samples, project=project, token=token)
         return web.Response(text=f"[profyl] SUCCESS: Project '{project}' schema mapped", status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
