@@ -195,7 +195,6 @@ def handle_start_mcp(projects: dict[dict], start_mcp: StartMCPCommand, secret_ke
     buffer.extend(message)
 
 def handle_schema_map(projects: dict[dict], schema_map: SchemaMapCommand, secret_key: str | None, buffer: bytearray):
-    # THIS IS WRONG, HAVE TO FIGURE OUT HOW TO CAUSE THE AI TO PROMPT BY CALLING THE METHOD IN .start_mcp()
     num_samples = schema_map.num_samples
     project_name = schema_map.project
     token = schema_map.token
@@ -205,4 +204,5 @@ def handle_schema_map(projects: dict[dict], schema_map: SchemaMapCommand, secret
         return
     
     manager: Manager = project["manager"]
-    manager.build_schema_map_payload(num_samples)
+    map_payload = manager.build_schema_map_payload(num_samples)
+    buffer.extend(map_payload.encode("utf-8"))

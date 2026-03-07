@@ -182,9 +182,8 @@ async def list_datasets(request: web.Request):
             return web.Response(text="[profyl] ERROR: project must be a string", status=422)
     
     try:
-        list_util(project=project)
-        # Fix this
-        return web.Response(text=f"[profyl] SUCCESS: Project '{project}' created", status=200)
+        text = list_util(project=project)
+        return web.Response(text=text, status=200)
     except ConfigError as e:
         return web.Response(text=str(e), status=422)
     except PayloadError as e:

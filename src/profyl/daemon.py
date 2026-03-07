@@ -23,6 +23,7 @@ class Daemon:
         command = pickle.loads(bytes)
         buffer = bytearray()
         dispatch_command(self, command, buffer)
+        writer.write(struct.pack("!I", len(buffer)))
         writer.write(buffer)
         await writer.drain()
     

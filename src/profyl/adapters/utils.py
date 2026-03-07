@@ -108,7 +108,7 @@ def remove_util(
 
 def list_util(
     project: str = "All projects"
-):
+) -> str:
     with open(".profyl/daemon/config.toml", 'rb') as f:
         data = tomllib.load(f)
      
@@ -129,7 +129,8 @@ def list_util(
         
     command = ListDatasetsCommand(project=project, token=token)
     data = pickle.dumps(command)
-    connect(host, port, data)
+    text = connect(host, port, data)
+    return text
 
 def start_mcp_util(
     project: str = "Namespacing not enabled"
@@ -195,10 +196,21 @@ def cmd_check(project: str) -> tuple[str, int, str]:
         
     return (host, port, token)
 
-def connect(host: str, port: int, data: bytes):
+def connect(host: str, port: int, data: bytes) -> str:
     with socket.create_connection((host, port)) as s:
         s.sendall(struct.pack("!I", len(data)))
         s.sendall(data)
-        recv = s.recv(1024)
-        text = recv.decode("utf-8")
+        length_bytes = b""
+        while len(length_bytes) < 4:
+            chunk = s.recv(4 - len(length_bytes))
+            length_bytes += chunk
+            
+        length = struct.unpack("!I", length_bytes)[0]
+        data = b""
+        while len(data) < length:
+            chunk = s.recv(length - len(data))
+            data += chunk
+            
+        text = data.decode("utf-8")
         print(text)
+        return text
