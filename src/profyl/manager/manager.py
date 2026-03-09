@@ -93,7 +93,7 @@ class Manager:
             return self.cache.get_cell(dataset, sheet, row, col)
             
         @mcp.tool()
-        def value_cross_ref(dataset: int, sheet: int, col: int, val: int) -> bool:
+        def value_cross_ref(dataset: int, sheet: int, col: int, val: str) -> bool:
             """Check if a value exists in another sheet's column (foreign key validation)."""
             return self.cache.value_cross_ref(dataset, sheet, col, val)
             

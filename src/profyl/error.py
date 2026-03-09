@@ -15,3 +15,6 @@ class CliError(Exception):
 
 class HttpError(Exception):
     pass
+
+class StateError(Exception):
+    pass

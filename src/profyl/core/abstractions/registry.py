@@ -5,10 +5,10 @@ from enum import Enum, auto
 from typing import ItemsView
 from profyl.core.abstractions.data_source import DataSource
 
-class Status(Enum):
-    Registered = auto()
-    Loaded = auto()
-    Ready = auto()
+class Status(str, Enum):
+    Registered = "Registered"
+    Loaded = "Loaded"
+    Ready = "Ready"
     
 class DataSourceType(str, Enum):
     Excel = "Excel"

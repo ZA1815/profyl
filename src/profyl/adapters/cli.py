@@ -24,7 +24,7 @@ def start(
     http_host: Annotated[str, typer.Option(help="Host for HTTP server (requires --http flag)")] = "0.0.0.0",
     http_port: Annotated[int, typer.Option(help="Port for HTTP server (requires --http flag)")] = 8001,
     watch: Annotated[bool, typer.Option(help="Start folder watch")] = False,
-    folder_path: Annotated[bool, typer.Option(help="Path to folder (requires --watch flag)")] = ""
+    folder_path: Annotated[str, typer.Option(help="Path to folder (requires --watch flag)")] = ""
 ):
     info_path = Path(".profyl/daemon/config.toml")
     daemon_out_path = Path(".profyl/daemon/out.log")
