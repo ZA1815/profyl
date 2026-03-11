@@ -2,10 +2,14 @@ from json.decoder import JSONDecodeError
 from sys import argv
 from typing import Any
 from aiohttp import web
-from profyl.adapters.utils import init_util, list_util, load_util, register_util, remove_util, schema_map_util, start_mcp_util
+from profyl.adapters.utils import init_util, list_util, load_util, register_util, remove_util, restore_util, schema_map_util, start_mcp_util
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
 from profyl.error import AuthError, ConfigError, PayloadError, ProjectError
+
+async def restore(request: web.Request):
+    restore_util()
+    return web.Response(text="[profyl] SUCCESS: Daemon loaded from state.json", status=200)
 
 async def init(request: web.Request):
     try:

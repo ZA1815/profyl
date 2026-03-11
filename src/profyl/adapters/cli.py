@@ -5,11 +5,11 @@ import subprocess
 import sys
 import os
 from pathlib import Path
-from profyl.adapters.utils import add_sys_kwargs, init_util, list_util, load_util, register_util, remove_util, schema_map_util, start_mcp_util
+from profyl.adapters.utils import add_sys_kwargs, init_util, list_util, load_util, register_util, remove_util, restore_util, schema_map_util, start_mcp_util
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
 import typer
-from typer.params import Annotated
+from typing import Annotated
 
 cli = typer.Typer()
 
@@ -111,6 +111,10 @@ auth = {str(auth).lower()}''', file=f)
         watch = subprocess.Popen(**watch_popen_kwargs)
         with open(watch_pid_path, 'w') as f:
             print(watch.pid, file=f)
+
+@cli.command()
+def restore():
+    restore_util()
     
 @cli.command()
 def init(

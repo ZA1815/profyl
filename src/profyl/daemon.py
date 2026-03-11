@@ -2,6 +2,7 @@ import asyncio
 from asyncio import StreamReader, StreamWriter
 from datetime import datetime
 import json
+from pathlib import Path
 import pickle
 import struct
 from sys import argv
@@ -9,6 +10,7 @@ from typing import Any
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, Entry, Registry, RegistryType, Status
 from profyl.core.caches.redis_cache import RedisCache
+from profyl.core.commands.commands import RestoreStateCommand
 from profyl.core.data_sources.excel import ExcelDataSource
 from profyl.core.data_sources.mongodb import MongoDBDataSource
 from profyl.core.registries.dict_registry import DictRegistry
@@ -33,15 +35,22 @@ class Daemon:
         bytes = await reader.readexactly(length)
         command = pickle.loads(bytes)
         buffer = bytearray()
-        dispatch_command(self, command, buffer)
+        
+        if isinstance(command, RestoreStateCommand):
+            self.load(buffer=buffer)
+        else:
+            dispatch_command(self, command, buffer)
+            
         writer.write(struct.pack("!I", len(buffer)))
         writer.write(buffer)
         await writer.drain()
-        writer.close()
+        writer.close()   
         
     def save(self):
         serialized_projects = {}
-        with open(".profyl/state.json", 'w') as f:
+        state_path = Path(".profyl/state.json")
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(state_path, 'w') as f:
             for (name, details) in self.projects.items():
                 serialized_projects[name] = {}
                 manager: Manager = details["manager"]
@@ -69,8 +78,13 @@ class Daemon:
             
             json.dump(serialized_projects, f)
                 
-    def load(self):
-        with open(".profyl/state.json", 'r') as f:
+    def load(self, buffer: bytearray):
+        state_path = Path(".profyl/state.json")
+        if not state_path.exists():
+            buffer.append("[profyl] ERROR: state.json does not exist in the .profyl directory".encode("utf-8"))
+            return
+            
+        with open(state_path, 'r') as f:
             deserialized_projects: dict[str, dict[str, Any]] = json.load(f)
             for (name, details) in deserialized_projects.items():
                 self.projects[name] = {}
@@ -79,13 +93,16 @@ class Daemon:
                     case "Dict":
                         registry = DictRegistry()
                     case _:
-                        raise StateError("Invalid RegistryType defined in state.json")
+                        buffer.append("[profyl] ERROR: Invalid RegistryType defined in state.json".encode("utf-8"))
+                        return
+                        
                 cache_type = details["cache_type"]
                 match cache_type:
                     case "Redis":
                         cache = RedisCache()
                     case _:
-                        raise StateError("Invalid CacheType defined in state.json")
+                        buffer.append("[profyl] ERROR: Invalid CacheType defined in state.json".encode("utf-8"))
+                        return
                         
                 entries: dict[str, dict[str, str]] = details["registry"]["entries"]
                 for (key_name, entry_details) in entries.items():
@@ -100,7 +117,9 @@ class Daemon:
                         #   data_source = MongoDBDataSource()
                         #   data_source
                         case _:
-                            raise StateError("Invalid DataSourceType defined in state.json")
+                            buffer.append("Invalid DataSourceType defined in state.json".encode("utf-8"))
+                            return
+                            
                     source_num = entry_details["source_num"]
                     timestamp = entry_details["timestamp"]
                     status = entry_details["status"]

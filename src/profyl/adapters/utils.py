@@ -8,8 +8,22 @@ import tomllib
 
 from profyl.core.abstractions.cache import CacheType
 from profyl.core.abstractions.registry import DataSourceType, RegistryType
-from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, SchemaMapCommand, StartMCPCommand
+from profyl.core.commands.commands import InitCommand, ListDatasetsCommand, LoadDatasetCommand, RegisterDatasetCommand, RemoveDatasetCommand, RestoreStateCommand, SchemaMapCommand, StartMCPCommand
 from profyl.error import AuthError, ConfigError, PayloadError, ProjectError
+
+def restore_util():
+    with open(".profyl/daemon/config.toml", "rb") as f:
+        data = tomllib.load(f)
+        
+    try:
+        host = data["profyl-scoped"]["host"]
+        port = data["profyl-scoped"]["port"]
+    except KeyError as e:
+        raise ConfigError(f"[profyl] ERROR: Missing table or key from .profyl/daemon/config.toml: {e}")
+    
+    command = RestoreStateCommand()
+    data = pickle.dumps(command)
+    connect(host, port, data)
 
 def init_util(
     registry: RegistryType,

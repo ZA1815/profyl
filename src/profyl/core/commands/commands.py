@@ -11,6 +11,10 @@ class ProjectMixin:
     project: str
 
 @dataclass
+class RestoreStateCommand():
+    pass
+
+@dataclass
 class InitCommand(AuthenticationMixin, ProjectMixin):
     registry: RegistryType
     cache: CacheType

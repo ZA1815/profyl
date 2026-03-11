@@ -1,1 +1,1 @@
-from .commands import AuthenticationMixin, ProjectMixin, InitCommand, RegisterDatasetCommand, LoadDatasetCommand, RemoveDatasetCommand, ListDatasetsCommand, StartMCPCommand, SchemaMapCommand
+from .commands import AuthenticationMixin, ProjectMixin, RestoreStateCommand, InitCommand, RegisterDatasetCommand, LoadDatasetCommand, RemoveDatasetCommand, ListDatasetsCommand, StartMCPCommand, SchemaMapCommand
